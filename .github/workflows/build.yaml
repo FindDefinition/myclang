@@ -8,37 +8,37 @@ on:
       - '*'
   
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: [3.8]
-    steps:
-      - uses: actions/checkout@master
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - uses: ilammy/msvc-dev-cmd@v1
-      - name: download clang
-        run: |
-          $client = new-object System.Net.WebClient
-          $client.DownloadFile("https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz", "$($pwd)/llvm.tar.xz")
-          tar xf $pwd/llvm.tar.xz
-          mv $pwd/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $pwd/llvm 
-        shell: powershell
+#   build-windows:
+#     runs-on: windows-latest
+#     strategy:
+#       matrix:
+#         python-version: [3.8]
+#     steps:
+#       - uses: actions/checkout@master
+#       - name: Set up Python ${{ matrix.python-version }}
+#         uses: actions/setup-python@v2
+#         with:
+#           python-version: ${{ matrix.python-version }}
+#       - uses: ilammy/msvc-dev-cmd@v1
+#       - name: download clang
+#         run: |
+#           $client = new-object System.Net.WebClient
+#           $client.DownloadFile("https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz", "$($pwd)/llvm.tar.xz")
+#           tar xf $pwd/llvm.tar.xz
+#           mv $pwd/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $pwd/llvm 
+#         shell: powershell
 
-      - name: test
-        run: |
-          set CLANG_LIBRARY_PATH=%cd%/llvm
-          python -m pip install --upgrade pip twine wheel
-          python -m pip install pytest
-          python -m pip install -e .
-          pytest ./test
+#       - name: test
+#         run: |
+#           set CLANG_LIBRARY_PATH=%cd%/llvm
+#           python -m pip install --upgrade pip twine wheel
+#           python -m pip install pytest
+#           python -m pip install -e .
+#           pytest ./test
 
   build:
-    needs: build-windows
-    runs-on: ubuntu-latest
+    # needs: build-windows
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python-version: [3.8]
@@ -49,9 +49,13 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-
+      - name: download clang
+        run: |
+          wget https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/clang+llvm-11.0.0-x86_64-linux-gnu-ubuntu-20.04.tar.xz -O $PWD/llvm.tar.gz 
+          tar xf $PWD/llvm.tar.gz
       - name: test
         run: |
+          export PATH=$PATH:$PWD/llvm/bin
           python -m pip install --upgrade pip twine wheel
           python -m pip install pytest
           python -m pip install -e .
