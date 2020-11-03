@@ -1,0 +1,2 @@
+include myclang/cext/libclang/*.cpp
+include myclang/cext/libclang/*.h

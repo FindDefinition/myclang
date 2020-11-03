@@ -1,0 +1,84 @@
+dirobserver:
+    type: codeai.devops.projobserver::ProjectObserver
+    config:
+        root: $(root)
+        bg_server: $<external:external["bg_server"]>
+        console_url: localhost:50091
+        env:
+            PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
+        ready_ev: $<external:external["ready_ev"]>
+        stop_ev: $<external:external["stop_ev"]>
+
+pythonanalysis:
+    type: codeai.devops.analyzer::PythonAnalyzerNode
+    config:
+        root: $(root)
+    inputs:
+        changes: dirobserver.out
+
+rawcppanalysis:
+    type: codeai.devops.analyzer::SimpleCPPAnalyzerNode
+    config:
+        includes: ["*.cpp", "*.cu", "*.cc", "*.h", "*.hpp", "*.hxx", "*.cxx"]
+        root: $(root)
+    inputs:
+        changes: dirobserver.out
+
+simplecppanalysis:
+    type: codeai.devops.analyzer::CPPAnalyzerNode
+    config:
+        includes: ["*.cpp", "*.cu", "*.cc", "*.h", "*.hpp", "*.hxx", "*.cxx"]
+        prefixes: [_ci_dev_, _FT_, _ci_cudev_, _ci_cldev_, _ci_msdev_]
+        root: $(root)
+    inputs:
+        changes: dirobserver.out
+        
+pytestobserver:
+    type: codeai.devops.observer::TestObserverNode
+    config:
+        python_executable: python 
+        py_analyzer: $<pythonanalysis>
+        root: $(root)
+    input_mode: any
+    inputs:
+        changes: [pythonanalysis.out, rawcppanalysis.out]
+
+devobserver:
+    type: codeai.devops.observer::DevObserverNode
+    config:
+        pattern: _ci_dev_.* 
+        py_analyzer: $<pythonanalysis>
+        root: $(root)
+    input_mode: any
+    inputs:
+        changes: [pythonanalysis.out, rawcppanalysis.out]
+
+linereplace:
+    type: codeai.devops.analyzers.linechange::LineReplaceNode
+    config:
+        suffixes: [".cc", ".cu", ".h", ".hpp", ".cpp"]
+    inputs:
+        changes: dirobserver.out
+    
+
+clangast:
+    type: codeai.devops.analyzers.clanginspect::ClangLineInspect
+    config:
+        root: $(root)
+        sources: ["codeai/devops/parselib/develop/test.cc"]
+        includes: []
+        options: [
+            -std=c++17,
+        ]
+        mode: ast
+    inputs:
+        changes: linereplace.line_replaces
+        
+
+taskexecutor:
+    type: codeai.devops.scheduler::SchedulerNode
+    config:
+        run_env: $<dirobserver:dirobserver.proc_env>
+        root: $(root)
+    inputs:
+        tasks: [pytestobserver.tasks, devobserver.tasks]
