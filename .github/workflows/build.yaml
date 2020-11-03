@@ -58,6 +58,7 @@ jobs:
       - name: test
         run: |
           export PATH=$PATH:$PWD/llvm/bin
+          echo $PATH
           python -m pip install --upgrade pip twine wheel
           python -m pip install pytest
           python -m pip install -e .
