@@ -3873,7 +3873,7 @@ class Config(object):
         if Config.library_path:
             file = Config.library_path + '/' + file
         else:
-            from myclang import LIBCLANG_PATH
+            from myclang.cext import LIBCLANG_PATH
             file = str(LIBCLANG_PATH)
         return file
 
