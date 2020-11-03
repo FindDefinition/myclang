@@ -57,9 +57,7 @@ jobs:
           rm -rf $HOME/llvm.tar.xz
       - name: test
         run: |
-          export PATH=$PATH:$HOME/llvm/bin
-          echo $PATH
-          ls $HOME
+          export CLANG_LIBRARY_PATH=$HOME/llvm
           python -m pip install --upgrade pip twine wheel
           python -m pip install pytest
           python -m pip install -e .
