@@ -51,14 +51,15 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: download clang
         run: |
-          wget https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/clang+llvm-11.0.0-x86_64-linux-gnu-ubuntu-20.04.tar.xz -q -O $PWD/llvm.tar.xz 
-          tar xf $PWD/llvm.tar.xz
-          mv $PWD/clang+llvm-11.0.0-x86_64-linux-gnu-ubuntu-20.04 $PWD/llvm
-          rm -rf $PWD/llvm.tar.xz
+          wget https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/clang+llvm-11.0.0-x86_64-linux-gnu-ubuntu-20.04.tar.xz -q -O $HOME/llvm.tar.xz 
+          tar xf $HOME/llvm.tar.xz
+          mv $HOME/clang+llvm-11.0.0-x86_64-linux-gnu-ubuntu-20.04 $HOME/llvm
+          rm -rf $HOME/llvm.tar.xz
       - name: test
         run: |
-          export PATH=$PATH:$PWD/llvm/bin
+          export PATH=$PATH:$HOME/llvm/bin
           echo $PATH
+          ls $HOME
           python -m pip install --upgrade pip twine wheel
           python -m pip install pytest
           python -m pip install -e .
