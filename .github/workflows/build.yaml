@@ -8,36 +8,35 @@ on:
       - '*'
   
 jobs:
-#   build-windows:
-#     runs-on: windows-latest
-#     strategy:
-#       matrix:
-#         python-version: [3.8]
-#     steps:
-#       - uses: actions/checkout@master
-#       - name: Set up Python ${{ matrix.python-version }}
-#         uses: actions/setup-python@v2
-#         with:
-#           python-version: ${{ matrix.python-version }}
-#       - uses: ilammy/msvc-dev-cmd@v1
-#       - name: download clang
-#         run: |
-#           $client = new-object System.Net.WebClient
-#           $client.DownloadFile("https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz", "$($pwd)/llvm.tar.xz")
-#           tar xf $pwd/llvm.tar.xz
-#           mv $pwd/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $pwd/llvm 
-#         shell: powershell
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+    steps:
+      - uses: actions/checkout@master
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: download clang
+        run: |
+          curl -o $HOME/llvm.tar.xz https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz
+          tar xf $HOME/llvm.tar.xz
+          mv $HOME/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $HOME/llvm 
+        shell: powershell
 
-#       - name: test
-#         run: |
-#           set CLANG_LIBRARY_PATH=%cd%/llvm
-#           python -m pip install --upgrade pip twine wheel
-#           python -m pip install pytest
-#           python -m pip install -e .
-#           pytest ./test
+      - name: test
+        run: |
+          set CLANG_LIBRARY_PATH=$HOME/llvm
+          python -m pip install --upgrade pip twine wheel
+          python -m pip install pytest
+          python -m pip install -e .
+          pytest ./test
 
   build:
-    # needs: build-windows
+    needs: build-windows
     runs-on: ubuntu-20.04
     strategy:
       matrix:
