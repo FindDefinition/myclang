@@ -31,6 +31,7 @@ def get_clang_root() -> Optional[Path]:
     return clang_folder.parent
 
 CLANG_ROOT = get_clang_root()
+print("CLANG_ROOT", CLANG_ROOT)
 assert CLANG_ROOT is not None
 LIBCLANG_NAME = "clang"
 CLANG_LIBPATH = CLANG_ROOT / "lib"
