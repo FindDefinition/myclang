@@ -21,11 +21,11 @@ def get_executable_path(executable: str) -> str:
 
 def get_clang_root() -> Optional[Path]:
     path = get_executable_path("clang")
-    clang_folder = None
+    clang_folder = os.getenv("CLANG_LIBRARY_PATH", None)
+    if clang_folder:
+        return clang_folder
     if path:
         clang_folder = Path(path).parent.parent / "lib"
-    else:
-        clang_folder = os.getenv("CLANG_LIBRARY_PATH", None)
     if clang_folder is None:
         return None
     return clang_folder.parent
