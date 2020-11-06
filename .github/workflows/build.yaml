@@ -25,15 +25,13 @@ jobs:
         run: |
           echo "Hello world!"
           echo "$HOME"
-          Invoke-WebRequest -Uri https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0_rc1.tar.gz -UseBasicParsing -OutFile $HOME/boost.tar.gz 
-          echo "Boost!"
-          # curl -o $HOME/llvm.tar.xz https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz
-          # echo "Download finished!"
-          # Install-Module -Name 7Zip4Powershell
-          # echo "Module Installed!"
-          # Expand-7Zip $HOME/llvm.tar.xz $HOME/llvm
-          # Expand-7Zip $HOME//llbv/llvm.tar $HOME/llvm
-          # mv $HOME/llvm/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $HOME/llvm/llvm
+          Invoke-WebRequest -Uri https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz -UseBasicParsing -OutFile $HOME/llvm.tar.xz
+          echo "Download finished!"
+          Install-Module -Name 7Zip4Powershell
+          echo "Module Installed!"
+          Expand-7Zip $HOME/llvm.tar.xz $HOME/llvm
+          Expand-7Zip $HOME//llbv/llvm.tar $HOME/llvm
+          mv $HOME/llvm/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $HOME/llvm/llvm
         shell: powershell
 
       - name: test
