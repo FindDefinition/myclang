@@ -25,6 +25,7 @@ jobs:
         run: |
           echo "Hello world!"
           echo "$HOME"
+          # https://stackoverflow.com/questions/28682642/powershell-why-is-using-invoke-webrequest-much-slower-than-a-browser-download
           $ProgressPreference = 'SilentlyContinue'
           Invoke-WebRequest -Uri https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz -UseBasicParsing -OutFile $HOME/llvm.tar.xz
           echo "Download finished!"
@@ -38,6 +39,8 @@ jobs:
       - name: test
         run: |
           set CLANG_LIBRARY_PATH=$HOME/llvm/llvm
+          echo %CLANG_LIBRARY_PATH%
+          ls $HOME/llvm/llvm
           python -m pip install --upgrade pip twine wheel
           python -m pip install pytest
           python -m pip install -e .
