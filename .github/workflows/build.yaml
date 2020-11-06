@@ -24,7 +24,8 @@ jobs:
       - name: download clang
         run: |
           echo "Hello world!"
-          curl -o $HOME/boost.tar.gz https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0_rc1.tar.gz
+          echo $HOME
+          wget https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0_rc1.tar.gz -UseBasicParsing -OutFile $HOME/boost.tar.gz 
           echo "Boost!"
           curl -o $HOME/llvm.tar.xz https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz
           echo "Download finished!"
