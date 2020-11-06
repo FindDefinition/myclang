@@ -38,7 +38,7 @@ jobs:
 
       - name: test
         run: |
-          $Env:CLANG_LIBRARY_PATH = $HOME/llvm/llvm
+          $Env:CLANG_LIBRARY_PATH = "$HOME/llvm/llvm"
           python -m pip install --upgrade pip twine wheel
           python -m pip install pytest
           python -m pip install -e .
