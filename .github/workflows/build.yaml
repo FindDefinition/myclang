@@ -38,13 +38,12 @@ jobs:
 
       - name: test
         run: |
-          setx CLANG_LIBRARY_PATH $HOME/llvm/llvm
-          echo $CLANG_LIBRARY_PATH
-          ls $HOME/llvm/llvm
+          $Env:CLANG_LIBRARY_PATH = $HOME/llvm/llvm
           python -m pip install --upgrade pip twine wheel
           python -m pip install pytest
           python -m pip install -e .
           pytest ./test
+        shell: powershell
 
   build:
     needs: build-windows
