@@ -26,11 +26,10 @@ def get_executable_path(executable: str) -> str:
     return out.decode("utf-8").strip()
 
 def get_clang_root() -> Optional[Path]:
+    path = get_executable_path("clang")
     clang_folder = os.getenv("CLANG_LIBRARY_PATH", None)
-    print("clang_folder", clang_folder)
     if clang_folder:
         return Path(clang_folder)
-    path = get_executable_path("clang")
     if path:
         clang_folder = Path(path).parent.parent / "lib"
     if clang_folder is None:
@@ -39,11 +38,10 @@ def get_clang_root() -> Optional[Path]:
 
 CLANG_ROOT = get_clang_root()
 assert CLANG_ROOT is not None
-LIBCLANG_NAME = "clang"
+LIBCLANG_NAME = "myclang"
 CLANG_LIBPATH = CLANG_ROOT / "lib"
 
 if compat.InWindows:
-    LIBCLANG_NAME = "libclang"
     LIBCLANG_PATH = CLANG_ROOT / "bin" / "libclang.dll"
 LIBCLANG_SOURCES = list((Path(__file__).parent / "libclang").glob("*.cpp"))
 LIBCLANG_PATH = ccimport.ccimport(LIBCLANG_SOURCES,
@@ -56,10 +54,6 @@ LIBCLANG_PATH = ccimport.ccimport(LIBCLANG_SOURCES,
                                     build_ctype=True,
                                     load_library=False,
                                     disable_hash=True)
-
-if not compat.InWindows:
-    LIBCLANG_NAME = "myclang"
-    CLANG_LIBPATH = Path(__file__).parent
 
 flags = []
 if not compat.InWindows:
