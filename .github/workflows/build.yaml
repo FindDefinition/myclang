@@ -38,7 +38,7 @@ jobs:
 
       - name: test
         run: |
-          set CLANG_LIBRARY_PATH=$HOME/llvm/llvm
+          setx CLANG_LIBRARY_PATH $HOME/llvm/llvm
           echo $CLANG_LIBRARY_PATH
           ls $HOME/llvm/llvm
           python -m pip install --upgrade pip twine wheel
