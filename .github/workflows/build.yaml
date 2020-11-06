@@ -25,7 +25,7 @@ jobs:
         run: |
           echo "Hello world!"
           echo "$HOME"
-          wget https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0_rc1.tar.gz -UseBasicParsing -OutFile $HOME/boost.tar.gz 
+          Invoke-WebRequest -Uri https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0_rc1.tar.gz -UseBasicParsing -OutFile $HOME/boost.tar.gz 
           echo "Boost!"
           # curl -o $HOME/llvm.tar.xz https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz
           # echo "Download finished!"
