@@ -31,7 +31,7 @@ jobs:
           Install-Module -Force -Name 7Zip4Powershell
           echo "Module Installed!"
           Expand-7Zip $HOME/llvm.tar.xz $HOME/llvm
-          Expand-7Zip $HOME//llbv/llvm.tar $HOME/llvm
+          Expand-7Zip $HOME/llvm/llvm.tar $HOME/llvm
           mv $HOME/llvm/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $HOME/llvm/llvm
         shell: powershell
 
