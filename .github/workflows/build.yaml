@@ -28,7 +28,7 @@ jobs:
           $ProgressPreference = 'SilentlyContinue'
           Invoke-WebRequest -Uri https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz -UseBasicParsing -OutFile $HOME/llvm.tar.xz
           echo "Download finished!"
-          Install-Module -Name 7Zip4Powershell
+          Install-Module -Force -Name 7Zip4Powershell
           echo "Module Installed!"
           Expand-7Zip $HOME/llvm.tar.xz $HOME/llvm
           Expand-7Zip $HOME//llbv/llvm.tar $HOME/llvm
