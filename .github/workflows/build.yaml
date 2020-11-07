@@ -23,13 +23,8 @@ jobs:
         with:
           path: ~/llvm
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - name: Check file existence
-        id: check_files
-        uses: andstor/file-existence-action@v1
-        with:
-          files: "~/llvm/llvm/bin/clang++.exe"
       - name: download clang
-        if: steps.check_files.outputs.files_exists == 'false'
+        if: steps.cache-llvm.outputs.cache-hit != 'true'
         run: |
           echo "Download LLVM!!!"
           # https://stackoverflow.com/questions/28682642/powershell-why-is-using-invoke-webrequest-much-slower-than-a-browser-download

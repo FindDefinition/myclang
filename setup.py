@@ -82,7 +82,7 @@ about['__version__'] = version
 
 with open(version_path, 'w') as f:
     f.write("__version__ = '{}'\n".format(version))
-enable_jit = os.environ.get("MYCLANG_ENABLE_JIT", "0") == "1"
+enable_jit = os.environ.get("MYCLANG_ENABLE_JIT", "1") == "1"
 enable_jit_str = "True"
 if not enable_jit:
     enable_jit_str = "False"
