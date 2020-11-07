@@ -20,10 +20,12 @@ jobs:
         uses: actions/cache@v2
         id: cache-llvm
         env:
-          cache-name: cache-llvm-v2
+          cache-name: cache-llvm-v3
         with:
-          path: ~/llvm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-v2
+          path: |
+            ~/llvm/llvm
+            !~/llvm/llvm/bin
+          key: ${{ runner.os }}-build-${{ env.cache-name }}
       - name: download clang
         if: steps.cache-llvm.outputs.cache-hit != 'true'
         run: |
@@ -35,8 +37,6 @@ jobs:
           Expand-7Zip $HOME/llvm.tar.xz $HOME/llvm
           Expand-7Zip $HOME/llvm/llvm.tar $HOME/llvm
           mv $HOME/llvm/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $HOME/llvm/llvm
-          rm $HOME/llvm/llvm.tar
-          rm $HOME/llvm.tar.xz
         shell: powershell
       
       - name: Set up Python ${{ matrix.python-version }}
