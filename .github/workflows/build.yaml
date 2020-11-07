@@ -13,16 +13,27 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.7, 3.8]
     steps:
       - uses: actions/checkout@master
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Check file existence
+        id: check_files
+        uses: andstor/file-existence-action@v1
         with:
-          python-version: ${{ matrix.python-version }}
-      - uses: ilammy/msvc-dev-cmd@v1
+          files: "~/llvm/llvm/bin/clang++.exe"
+
+      - name: Cache LLVM Downloads
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-llvm
+        with:
+          path: ~/llvm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}
+
       - name: download clang
+        if: steps.check_files.outputs.files_exists == 'true'
         run: |
+          echo "Download LLVM!!!"
           # https://stackoverflow.com/questions/28682642/powershell-why-is-using-invoke-webrequest-much-slower-than-a-browser-download
           $ProgressPreference = 'SilentlyContinue'
           Invoke-WebRequest -Uri https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz -UseBasicParsing -OutFile $HOME/llvm.tar.xz
@@ -31,6 +42,12 @@ jobs:
           Expand-7Zip $HOME/llvm/llvm.tar $HOME/llvm
           mv $HOME/llvm/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $HOME/llvm/llvm
         shell: powershell
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: ilammy/msvc-dev-cmd@v1
 
       - name: test
         run: |
@@ -102,7 +119,6 @@ jobs:
           python -m
           pep517.build
           --source
-          --binary
           --out-dir dist/
           .
 

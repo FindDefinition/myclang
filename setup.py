@@ -18,8 +18,6 @@ from ccimport.extension import (AutoImportExtension, CCImportBuild,
                                 CCImportExtension)
 from setuptools import Command, find_packages, setup
 
-from myclang.build_meta import ENABLE_JIT
-
 # Package meta-data.
 NAME = 'myclang'
 DESCRIPTION = 'standalone libclang code with some modifications'
@@ -155,7 +153,7 @@ def get_clang_root() -> Optional[Path]:
     return clang_folder.parent
 
 
-if ENABLE_JIT:
+if enable_jit:
     cmdclass = {
         'upload': UploadCommand,
     }
