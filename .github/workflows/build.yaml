@@ -39,6 +39,8 @@ jobs:
           Expand-7Zip $HOME/llvm.tar.xz $HOME/llvm
           Expand-7Zip $HOME/llvm/llvm.tar $HOME/llvm
           mv $HOME/llvm/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $HOME/llvm/llvm
+          rm $HOME/llvm/llvm.tar
+          rm $HOME/llvm.tar.xz
         shell: powershell
       
       - name: Set up Python ${{ matrix.python-version }}
@@ -57,6 +59,7 @@ jobs:
         shell: powershell
       
       - name: Install pep517
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         run: >-
           python -m
           pip install
@@ -64,6 +67,7 @@ jobs:
           --user
       
       - name: Build a windows binary wheel
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         run: |
           $Env:CLANG_LIBRARY_PATH = "$HOME/llvm/llvm"
           $Env:MYCLANG_ENABLE_JIT = "0"
