@@ -18,13 +18,14 @@ jobs:
       - uses: actions/checkout@master
       - name: Cache LLVM Downloads
         uses: actions/cache@v2
+        id: cache-llvm
         env:
-          cache-name: cache-llvm
+          cache-name: cache-llvm-v2
         with:
           path: ~/llvm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-v2
       - name: download clang
-        if: steps.cache-llvm.outputs.cache-hit != 'true'
+        if: steps.cache-llvm-v2.outputs.cache-hit != 'true'
         run: |
           echo "Download LLVM!!!"
           # https://stackoverflow.com/questions/28682642/powershell-why-is-using-invoke-webrequest-much-slower-than-a-browser-download
