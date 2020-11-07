@@ -13,7 +13,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8]
     steps:
       - uses: actions/checkout@master
       - name: Cache LLVM Downloads
@@ -25,7 +25,7 @@ jobs:
           path: ~/llvm
           key: ${{ runner.os }}-build-${{ env.cache-name }}-v2
       - name: download clang
-        if: steps.cache-llvm-v2.outputs.cache-hit != 'true'
+        if: steps.cache-llvm.outputs.cache-hit != 'true'
         run: |
           echo "Download LLVM!!!"
           # https://stackoverflow.com/questions/28682642/powershell-why-is-using-invoke-webrequest-much-slower-than-a-browser-download
