@@ -239,6 +239,7 @@ def colored(text, *fmts):
     res += text + "\u001b[0m"
     return res
 
+
 def red(text, *fmts):
     return colored(text, "red", *fmts)
 

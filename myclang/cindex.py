@@ -2929,6 +2929,8 @@ class Index(ClangObject):
         If an error was encountered during parsing, a TranslationUnitLoadError
         will be raised.
         """
+        path = Path(path)
+        assert path.exists(), "source path must exist"
         return TranslationUnit.from_source(path, args, unsaved_files, options,
                                            self)
 

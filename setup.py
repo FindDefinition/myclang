@@ -5,10 +5,17 @@
 #   $ pip install twine
 
 import io
+import json
 import os
+import subprocess
 import sys
+from pathlib import Path
 from shutil import rmtree
+from typing import Optional
 
+from ccimport import compat
+from ccimport.extension import (AutoImportExtension, CCImportBuild,
+                                CCImportExtension)
 from setuptools import Command, find_packages, setup
 
 # Package meta-data.
@@ -22,7 +29,7 @@ VERSION = None
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "ccimport",
+    "ccimport>=0.1.2",
 ]
 if sys.version_info[:2] == (3, 6):
     REQUIRED.append("dataclasses")
@@ -75,6 +82,13 @@ about['__version__'] = version
 
 with open(version_path, 'w') as f:
     f.write("__version__ = '{}'\n".format(version))
+enable_jit = os.environ.get("MYCLANG_ENABLE_JIT", "1") == "1"
+enable_jit_str = "True"
+if not enable_jit:
+    enable_jit_str = "False"
+meta_path = os.path.join(cwd, NAME, 'build_meta.py')
+with open(meta_path, 'w') as f:
+    f.write("ENABLE_JIT = {}\n".format(enable_jit_str))
 
 
 class UploadCommand(Command):
@@ -115,6 +129,78 @@ class UploadCommand(Command):
         sys.exit()
 
 
+def get_executable_path(executable: str) -> str:
+    if compat.InWindows:
+        cmd = ["powershell.exe", "(Get-Command {}).Path".format(executable)]
+    else:
+        cmd = ["which", executable]
+    try:
+        out = subprocess.check_output(cmd)
+    except subprocess.CalledProcessError:
+        return ""
+    return out.decode("utf-8").strip()
+
+
+def get_clang_root() -> Optional[Path]:
+    path = get_executable_path("clang")
+    clang_folder = os.getenv("CLANG_LIBRARY_PATH", None)
+    if clang_folder:
+        return Path(clang_folder)
+    if path:
+        clang_folder = Path(path).parent.parent / "lib"
+    if clang_folder is None:
+        return None
+    return clang_folder.parent
+
+
+if enable_jit:
+    cmdclass = {
+        'upload': UploadCommand,
+    }
+    ext_modules = []
+else:
+    LIBCLANG_MODULE_PATH = Path(__file__).parent / "myclang" / "cext"
+
+    with (LIBCLANG_MODULE_PATH / "libclang.json").open("r") as f:
+        LIBCLANG_BUILD_META_ALL = json.load(f)
+    LIBCLANG_BUILD_META = LIBCLANG_BUILD_META_ALL[compat.OS.value]
+
+    CLANG_ROOT = get_clang_root()
+    assert CLANG_ROOT is not None, "can't find clang, install clang first."
+    cmdclass = {
+        'upload': UploadCommand,
+        'build_ext': CCImportBuild,
+    }
+    LIBCLANG_SOURCES = list((LIBCLANG_MODULE_PATH / "libclang").glob("*.cpp"))
+    print(len(LIBCLANG_SOURCES))
+    libclang_ext = CCImportExtension(
+        "myclang",
+        LIBCLANG_SOURCES,
+        "myclang/cext/myclang",
+        includes=[CLANG_ROOT / "include"],
+        libpaths=[CLANG_ROOT / "lib"],
+        libraries=LIBCLANG_BUILD_META["libraries"],
+        compile_options=LIBCLANG_BUILD_META["cflags"],
+        link_options=LIBCLANG_BUILD_META["ldflags"],
+        build_ctype=True,
+        std="c++14",
+    )
+    flags = []
+    if not compat.InWindows:
+        flags.append("-Wl,-rpath,{}".format("."))
+
+    clangutils_ext = AutoImportExtension(
+        "clangutils",
+        [LIBCLANG_MODULE_PATH / "clangutils.cc"],
+        "myclang/cext/clangutils",
+        includes=[CLANG_ROOT / "include"],
+        libpaths=["{extdir}/myclang/cext"],
+        libraries=["myclang"],
+        link_options=flags,
+        std="c++14",
+    )
+    ext_modules = [libclang_ext, clangutils_ext]
+
 # Where the magic happens:
 setup(
     name=NAME,
@@ -130,8 +216,7 @@ setup(
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
     entry_points={
-        'console_scripts': [
-        ],
+        'console_scripts': [],
     },
     install_requires=REQUIRED,
     extras_require=EXTRAS,
@@ -144,10 +229,8 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: Implementation :: CPython',
-        'Programming Language :: Python :: Implementation :: PyPy'
     ],
     # $ setup.py publish support.
-    cmdclass={
-        'upload': UploadCommand,
-    },
+    cmdclass=cmdclass,
+    ext_modules=ext_modules,
 )

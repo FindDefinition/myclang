@@ -4,41 +4,81 @@ on:
   push:
     branches:
       - master
+      - feature/*
     tags:
       - '*'
   
 jobs:
-  # build-windows:
-  #   runs-on: windows-latest
-  #   strategy:
-  #     matrix:
-  #       python-version: [3.8]
-  #   steps:
-  #     - uses: actions/checkout@master
-  #     - name: Set up Python ${{ matrix.python-version }}
-  #       uses: actions/setup-python@v2
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #     - uses: ilammy/msvc-dev-cmd@v1
-  #     - name: download clang
-  #       run: |
-  #         curl -o $HOME/llvm.tar.xz https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz
-  #         Install-Module -Name 7Zip4Powershell
-  #         Expand-7Zip $HOME/llvm.tar.xz $HOME/llvm
-  #         Expand-7Zip $HOME//llbv/llvm.tar $HOME/llvm
-  #         mv $HOME/llvm/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $HOME/llvm/llvm
-  #       shell: powershell
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+      - uses: actions/checkout@master
+      - name: Cache LLVM Downloads
+        uses: actions/cache@v2
+        id: cache-llvm
+        env:
+          cache-name: cache-llvm-v3
+        with:
+          path: |
+            ~/llvm/llvm
+            !~/llvm/llvm/bin
+          key: ${{ runner.os }}-build-${{ env.cache-name }}
+      - name: download clang
+        if: steps.cache-llvm.outputs.cache-hit != 'true'
+        run: |
+          echo "Download LLVM!!!"
+          # https://stackoverflow.com/questions/28682642/powershell-why-is-using-invoke-webrequest-much-slower-than-a-browser-download
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -Uri https://ziglang.org/deps/llvm%2bclang%2blld-11.0.0-x86_64-windows-msvc-release-mt.tar.xz -UseBasicParsing -OutFile $HOME/llvm.tar.xz
+          Install-Module -Force -Name 7Zip4Powershell
+          Expand-7Zip $HOME/llvm.tar.xz $HOME/llvm
+          Expand-7Zip $HOME/llvm/llvm.tar $HOME/llvm
+          mv $HOME/llvm/llvm+clang+lld-11.0.0-x86_64-windows-msvc-release-mt $HOME/llvm/llvm
+        shell: powershell
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: ilammy/msvc-dev-cmd@v1
 
-  #     - name: test
-  #       run: |
-  #         set CLANG_LIBRARY_PATH=$HOME/llvm/llvm
-  #         python -m pip install --upgrade pip twine wheel
-  #         python -m pip install pytest
-  #         python -m pip install -e .
-  #         pytest ./test
+      - name: test
+        run: |
+          $Env:CLANG_LIBRARY_PATH = "$HOME/llvm/llvm"
+          python -m pip install --upgrade pip twine wheel
+          python -m pip install pytest
+          python -m pip install -e .
+          pytest ./test
+        shell: powershell
+      
+      - name: Install pep517
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        run: >-
+          python -m
+          pip install
+          pep517
+          --user
+      
+      - name: Build a windows binary wheel
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        run: |
+          $Env:CLANG_LIBRARY_PATH = "$HOME/llvm/llvm"
+          $Env:MYCLANG_ENABLE_JIT = "0"
+          python -m pep517.build --binary --out-dir dist/ .
+        shell: powershell
 
+      - name: Publish a Python distribution to PyPI
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.pypi_password }}
+  
   build:
-    # needs: build-windows
+    needs: build-windows
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -77,7 +117,6 @@ jobs:
           python -m
           pep517.build
           --source
-          --binary
           --out-dir dist/
           .
 

@@ -1,4 +1,4 @@
-from pathlib import Path 
+from pathlib import Path
 
 CODEAI_SAVE_ROOT = Path.home() / ".codeai"
 CODEAI_SAVE_ROOT.mkdir(exist_ok=True)
