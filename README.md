@@ -1,6 +1,6 @@
 # myclang
 
-standalone libclang code with some modifications
+standalone libclang/clang++ code with some modifications
 
 [![Build Status](https://github.com/FindDefinition/myclang/workflows/build/badge.svg)](https://github.com/FindDefinition/myclang/actions?query=workflow%3Abuild)
 
@@ -13,3 +13,8 @@ Only support Clang 11.
 2. Add llvm bin to your PATH. if your system already have clang, you need to use ```CLANG_LIBRARY_PATH``` to indicate correct llvm.
 
 3. ```from myclang import cindex```
+
+
+## TODO
+* try to expose compile API to remove llvm toolchain dependency
+* try to solve CUDA problem

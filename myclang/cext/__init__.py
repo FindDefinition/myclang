@@ -17,6 +17,9 @@ from myclang.constants import MYCLANG_ROOT
 with (Path(__file__).parent / "libclang.json").open("r") as f:
     LIBCLANG_BUILD_META_ALL = json.load(f)
 LIBCLANG_BUILD_META = LIBCLANG_BUILD_META_ALL[compat.OS.value]
+with (Path(__file__).parent / "clang++.json").open("r") as f:
+    CLANG_COMPILER_BUILD_META_ALL = json.load(f)
+CLANG_COMPILER_BUILD_META = CLANG_COMPILER_BUILD_META_ALL[compat.OS.value]
 
 
 def get_executable_path(executable: str) -> str:
@@ -51,6 +54,8 @@ CLANG_LIBPATH = CLANG_ROOT / "lib"
 if compat.InWindows:
     LIBCLANG_PATH = CLANG_ROOT / "bin" / "libclang.dll"
 LIBCLANG_SOURCES = list((Path(__file__).parent / "libclang").glob("*.cpp"))
+CLANG_COMPILER_SOURCES = list((Path(__file__).parent / "clangcompiler").glob("*.cpp"))
+
 if ENABLE_JIT:
     LIBCLANG_PATH = ccimport.ccimport(
         LIBCLANG_SOURCES,
@@ -78,3 +83,17 @@ if ENABLE_JIT:
 else:
     clangutils = loader.try_import_from_path(
         Path(__file__).parent / get_full_file_name("clangutils", False))
+if ENABLE_JIT:
+    CLANG_COMPILER_PATH = ccimport.ccimport(
+        CLANG_COMPILER_SOURCES,
+        MYCLANG_ROOT / "clangmain",
+        includes=[CLANG_ROOT / "include"],
+        libpaths=[CLANG_ROOT / "lib"],
+        libraries=CLANG_COMPILER_BUILD_META["libraries"],
+        compile_options=CLANG_COMPILER_BUILD_META["cflags"],
+        link_options=CLANG_COMPILER_BUILD_META["ldflags"],
+        build_ctype=True,
+        load_library=False,
+        disable_hash=True)
+else:
+    CLANG_COMPILER_PATH = Path(__file__).parent / get_full_file_name("clangmain", True)

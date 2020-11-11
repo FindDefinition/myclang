@@ -1454,7 +1454,6 @@ def cursor_dumps(cursor: "Cursor",
 
     return ss.getvalue()
 
-
 class Cursor(Structure):
     """
     The Cursor class represents a reference to an element within the AST. It
@@ -3284,6 +3283,19 @@ class TranslationUnit(ClangObject):
 
         return TokenGroup.get_tokens(self, extent)
 
+    def dumps(self, indent=2, max_depth=9999, type_str_size_limit=100):
+        # dump a transunit. ignore all includes.
+        ss = io.StringIO()
+        cu = self.cursor
+        path = Path(self.spelling).resolve()
+        for child in cu.get_children():
+            loc = child.location
+            # print(loc)
+            if loc.file is not None and path is not None and Path(
+                    loc.file.name) != Path(path):
+                continue
+            print(child.dumps(indent, max_depth, type_str_size_limit), file=ss)
+        return ss.getvalue()
 
 class File(ClangObject):
     """
