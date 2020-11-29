@@ -45,7 +45,9 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include <cstdio>
-
+#include <vector>
+#include <string>
+#include <iostream>
 #ifdef CLANG_HAVE_RLIMITS
 #include <sys/resource.h>
 #endif
@@ -183,7 +185,18 @@ static int PrintSupportedCPUs(std::string TargetStr) {
 
 int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   ensureSufficientStack();
+  std::vector<std::string> Argv_str;
+  for (auto& c : Argv){
+    if (!c || *c == '\0'){
+      continue;
+    }
+    Argv_str.push_back(std::string(c));
+  }
 
+  for (auto s : Argv_str){
+    std::cout << s << " ";
+  }
+  std::cout << std::endl;
   std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 

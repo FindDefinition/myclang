@@ -37,11 +37,11 @@ from array import ArrayType
 from ctypes import *
 from enum import Enum
 from pathlib import Path
-from typing import Deque, Dict, Iterator, List, Optional, Union
+from typing import Deque, Dict, Generator, Iterator, List, Optional, Union, Set
 
-from myclang.utils import colors
-
-from . import enumerations
+from myclang.utils import colors, treevis
+from myclang.betterenums import NodeKind
+from . import enumerations, constants, ops
 
 # TODO
 # ====
@@ -317,7 +317,7 @@ class SourceRange(Structure):
         return conf.lib.clang_getRangeStart(self)
 
     @property
-    def end(self):
+    def end(self) -> SourceLocation:
         """
         Return a SourceLocation representing the last character within a
         source range.
@@ -713,614 +713,206 @@ class CursorKind(BaseEnumeration):
 # definitions, etc. However, the specific kind of the declaration is not
 # reported.
 CursorKind.UNEXPOSED_DECL = CursorKind(1)
-
-# A C or C++ struct.
 CursorKind.STRUCT_DECL = CursorKind(2)
-
-# A C or C++ union.
 CursorKind.UNION_DECL = CursorKind(3)
-
-# A C++ class.
 CursorKind.CLASS_DECL = CursorKind(4)
-
-# An enumeration.
 CursorKind.ENUM_DECL = CursorKind(5)
-
-# A field (in C) or non-static data member (in C++) in a struct, union, or C++
-# class.
 CursorKind.FIELD_DECL = CursorKind(6)
-
-# An enumerator constant.
 CursorKind.ENUM_CONSTANT_DECL = CursorKind(7)
-
-# A function.
 CursorKind.FUNCTION_DECL = CursorKind(8)
-
-# A variable.
 CursorKind.VAR_DECL = CursorKind(9)
-
-# A function or method parameter.
 CursorKind.PARM_DECL = CursorKind(10)
-
-# An Objective-C @interface.
 CursorKind.OBJC_INTERFACE_DECL = CursorKind(11)
-
-# An Objective-C @interface for a category.
 CursorKind.OBJC_CATEGORY_DECL = CursorKind(12)
-
-# An Objective-C @protocol declaration.
 CursorKind.OBJC_PROTOCOL_DECL = CursorKind(13)
-
-# An Objective-C @property declaration.
 CursorKind.OBJC_PROPERTY_DECL = CursorKind(14)
-
-# An Objective-C instance variable.
 CursorKind.OBJC_IVAR_DECL = CursorKind(15)
-
-# An Objective-C instance method.
 CursorKind.OBJC_INSTANCE_METHOD_DECL = CursorKind(16)
-
-# An Objective-C class method.
 CursorKind.OBJC_CLASS_METHOD_DECL = CursorKind(17)
-
-# An Objective-C @implementation.
 CursorKind.OBJC_IMPLEMENTATION_DECL = CursorKind(18)
-
-# An Objective-C @implementation for a category.
 CursorKind.OBJC_CATEGORY_IMPL_DECL = CursorKind(19)
-
-# A typedef.
 CursorKind.TYPEDEF_DECL = CursorKind(20)
-
-# A C++ class method.
 CursorKind.CXX_METHOD = CursorKind(21)
-
-# A C++ namespace.
 CursorKind.NAMESPACE = CursorKind(22)
-
-# A linkage specification, e.g. 'extern "C"'.
 CursorKind.LINKAGE_SPEC = CursorKind(23)
-
-# A C++ constructor.
 CursorKind.CONSTRUCTOR = CursorKind(24)
-
-# A C++ destructor.
 CursorKind.DESTRUCTOR = CursorKind(25)
-
-# A C++ conversion function.
 CursorKind.CONVERSION_FUNCTION = CursorKind(26)
-
-# A C++ template type parameter
 CursorKind.TEMPLATE_TYPE_PARAMETER = CursorKind(27)
-
-# A C++ non-type template parameter.
-CursorKind.TEMPLATE_NON_TYPE_PARAMETER = CursorKind(28)
-
-# A C++ template template parameter.
+CursorKind.NON_TYPE_TEMPLATE_PARAMETER = CursorKind(28)
 CursorKind.TEMPLATE_TEMPLATE_PARAMETER = CursorKind(29)
-
-# A C++ function template.
 CursorKind.FUNCTION_TEMPLATE = CursorKind(30)
-
-# A C++ class template.
 CursorKind.CLASS_TEMPLATE = CursorKind(31)
-
-# A C++ class template partial specialization.
 CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION = CursorKind(32)
-
-# A C++ namespace alias declaration.
 CursorKind.NAMESPACE_ALIAS = CursorKind(33)
-
-# A C++ using directive
 CursorKind.USING_DIRECTIVE = CursorKind(34)
-
-# A C++ using declaration
 CursorKind.USING_DECLARATION = CursorKind(35)
-
-# A Type alias decl.
 CursorKind.TYPE_ALIAS_DECL = CursorKind(36)
-
-# A Objective-C synthesize decl
 CursorKind.OBJC_SYNTHESIZE_DECL = CursorKind(37)
-
-# A Objective-C dynamic decl
 CursorKind.OBJC_DYNAMIC_DECL = CursorKind(38)
-
-# A C++ access specifier decl.
-CursorKind.CXX_ACCESS_SPEC_DECL = CursorKind(39)
-
-###
-# Reference Kinds
-
+CursorKind.CXX_ACCESS_SPECIFIER = CursorKind(39)
 CursorKind.OBJC_SUPER_CLASS_REF = CursorKind(40)
 CursorKind.OBJC_PROTOCOL_REF = CursorKind(41)
 CursorKind.OBJC_CLASS_REF = CursorKind(42)
-
-# A reference to a type declaration.
-#
-# A type reference occurs anywhere where a type is named but not
-# declared. For example, given:
-#   typedef unsigned size_type;
-#   size_type size;
-#
-# The typedef is a declaration of size_type (CXCursor_TypedefDecl),
-# while the type of the variable "size" is referenced. The cursor
-# referenced by the type of size is the typedef for size_type.
 CursorKind.TYPE_REF = CursorKind(43)
 CursorKind.CXX_BASE_SPECIFIER = CursorKind(44)
-
-# A reference to a class template, function template, template
-# template parameter, or class template partial specialization.
 CursorKind.TEMPLATE_REF = CursorKind(45)
-
-# A reference to a namespace or namepsace alias.
 CursorKind.NAMESPACE_REF = CursorKind(46)
-
-# A reference to a member of a struct, union, or class that occurs in
-# some non-expression context, e.g., a designated initializer.
 CursorKind.MEMBER_REF = CursorKind(47)
-
-# A reference to a labeled statement.
 CursorKind.LABEL_REF = CursorKind(48)
-
-# A reference to a set of overloaded functions or function templates
-# that has not yet been resolved to a specific function or function template.
 CursorKind.OVERLOADED_DECL_REF = CursorKind(49)
-
-# A reference to a variable that occurs in some non-expression
-# context, e.g., a C++ lambda capture list.
 CursorKind.VARIABLE_REF = CursorKind(50)
-
-###
-# Invalid/Error Kinds
-
 CursorKind.INVALID_FILE = CursorKind(70)
 CursorKind.NO_DECL_FOUND = CursorKind(71)
 CursorKind.NOT_IMPLEMENTED = CursorKind(72)
 CursorKind.INVALID_CODE = CursorKind(73)
-
-###
-# Expression Kinds
-
-# An expression whose specific kind is not exposed via this interface.
-#
-# Unexposed expressions have the same operations as any other kind of
-# expression; one can extract their location information, spelling, children,
-# etc. However, the specific kind of the expression is not reported.
 CursorKind.UNEXPOSED_EXPR = CursorKind(100)
 
-# An expression that refers to some value declaration, such as a function,
-# variable, or enumerator.
 CursorKind.DECL_REF_EXPR = CursorKind(101)
-
-# An expression that refers to a member of a struct, union, class, Objective-C
-# class, etc.
 CursorKind.MEMBER_REF_EXPR = CursorKind(102)
-
-# An expression that calls a function.
 CursorKind.CALL_EXPR = CursorKind(103)
-
-# An expression that sends a message to an Objective-C object or class.
 CursorKind.OBJC_MESSAGE_EXPR = CursorKind(104)
-
-# An expression that represents a block literal.
 CursorKind.BLOCK_EXPR = CursorKind(105)
-
-# An integer literal.
 CursorKind.INTEGER_LITERAL = CursorKind(106)
-
-# A floating point number literal.
 CursorKind.FLOATING_LITERAL = CursorKind(107)
-
-# An imaginary number literal.
 CursorKind.IMAGINARY_LITERAL = CursorKind(108)
-
-# A string literal.
 CursorKind.STRING_LITERAL = CursorKind(109)
-
-# A character literal.
 CursorKind.CHARACTER_LITERAL = CursorKind(110)
-
-# A parenthesized expression, e.g. "(1)".
-#
-# This AST node is only formed if full location information is requested.
 CursorKind.PAREN_EXPR = CursorKind(111)
-
-# This represents the unary-expression's (except sizeof and
-# alignof).
 CursorKind.UNARY_OPERATOR = CursorKind(112)
-
-# [C99 6.5.2.1] Array Subscripting.
 CursorKind.ARRAY_SUBSCRIPT_EXPR = CursorKind(113)
-
-# A builtin binary operation expression such as "x + y" or
-# "x <= y".
 CursorKind.BINARY_OPERATOR = CursorKind(114)
-
-# Compound assignment such as "+=".
-CursorKind.COMPOUND_ASSIGNMENT_OPERATOR = CursorKind(115)
-
-# The ?: ternary operator.
+CursorKind.COMPOUND_ASSIGN_OPERATOR = CursorKind(115)
 CursorKind.CONDITIONAL_OPERATOR = CursorKind(116)
-
-# An explicit cast in C (C99 6.5.4) or a C-style cast in C++
-# (C++ [expr.cast]), which uses the syntax (Type)expr.
-#
-# For example: (int)f.
-CursorKind.CSTYLE_CAST_EXPR = CursorKind(117)
-
-# [C99 6.5.2.5]
+CursorKind.C_STYLE_CAST_EXPR = CursorKind(117)
 CursorKind.COMPOUND_LITERAL_EXPR = CursorKind(118)
-
-# Describes an C or C++ initializer list.
 CursorKind.INIT_LIST_EXPR = CursorKind(119)
-
-# The GNU address of label extension, representing &&label.
 CursorKind.ADDR_LABEL_EXPR = CursorKind(120)
-
-# This is the GNU Statement Expression extension: ({int X=4; X;})
-CursorKind.StmtExpr = CursorKind(121)
-
-# Represents a C11 generic selection.
+CursorKind.STMT_EXPR = CursorKind(121)
 CursorKind.GENERIC_SELECTION_EXPR = CursorKind(122)
-
-# Implements the GNU __null extension, which is a name for a null
-# pointer constant that has integral type (e.g., int or long) and is the same
-# size and alignment as a pointer.
-#
-# The __null extension is typically only used by system headers, which define
-# NULL as __null in C++ rather than using 0 (which is an integer that may not
-# match the size of a pointer).
 CursorKind.GNU_NULL_EXPR = CursorKind(123)
-
-# C++'s static_cast<> expression.
 CursorKind.CXX_STATIC_CAST_EXPR = CursorKind(124)
-
-# C++'s dynamic_cast<> expression.
 CursorKind.CXX_DYNAMIC_CAST_EXPR = CursorKind(125)
-
-# C++'s reinterpret_cast<> expression.
 CursorKind.CXX_REINTERPRET_CAST_EXPR = CursorKind(126)
-
-# C++'s const_cast<> expression.
 CursorKind.CXX_CONST_CAST_EXPR = CursorKind(127)
-
-# Represents an explicit C++ type conversion that uses "functional"
-# notion (C++ [expr.type.conv]).
-#
-# Example:
-# \code
-#   x = int(0.5);
-# \endcode
 CursorKind.CXX_FUNCTIONAL_CAST_EXPR = CursorKind(128)
-
-# A C++ typeid expression (C++ [expr.typeid]).
-CursorKind.CXX_TYPEID_EXPR = CursorKind(129)
-
-# [C++ 2.13.5] C++ Boolean Literal.
-CursorKind.CXX_BOOL_LITERAL_EXPR = CursorKind(130)
-
-# [C++0x 2.14.7] C++ Pointer Literal.
-CursorKind.CXX_NULL_PTR_LITERAL_EXPR = CursorKind(131)
-
-# Represents the "this" expression in C++
-CursorKind.CXX_THIS_EXPR = CursorKind(132)
-
-# [C++ 15] C++ Throw Expression.
-#
-# This handles 'throw' and 'throw' assignment-expression. When
-# assignment-expression isn't present, Op will be null.
-CursorKind.CXX_THROW_EXPR = CursorKind(133)
-
-# A new expression for memory allocation and constructor calls, e.g:
-# "new CXXNewExpr(foo)".
-CursorKind.CXX_NEW_EXPR = CursorKind(134)
-
-# A delete expression for memory deallocation and destructor calls,
-# e.g. "delete[] pArray".
-CursorKind.CXX_DELETE_EXPR = CursorKind(135)
-
-# Represents a unary expression.
-CursorKind.CXX_UNARY_EXPR = CursorKind(136)
-
-# ObjCStringLiteral, used for Objective-C string literals i.e. "foo".
-CursorKind.OBJC_STRING_LITERAL = CursorKind(137)
-
-# ObjCEncodeExpr, used for in Objective-C.
-CursorKind.OBJC_ENCODE_EXPR = CursorKind(138)
-
-# ObjCSelectorExpr used for in Objective-C.
-CursorKind.OBJC_SELECTOR_EXPR = CursorKind(139)
-
-# Objective-C's protocol expression.
-CursorKind.OBJC_PROTOCOL_EXPR = CursorKind(140)
-
-# An Objective-C "bridged" cast expression, which casts between
-# Objective-C pointers and C pointers, transferring ownership in the process.
-#
-# \code
-#   NSString *str = (__bridge_transfer NSString *)CFCreateString();
-# \endcode
-CursorKind.OBJC_BRIDGE_CAST_EXPR = CursorKind(141)
-
-# Represents a C++0x pack expansion that produces a sequence of
-# expressions.
-#
-# A pack expansion expression contains a pattern (which itself is an
-# expression) followed by an ellipsis. For example:
-CursorKind.PACK_EXPANSION_EXPR = CursorKind(142)
-
-# Represents an expression that computes the length of a parameter
-# pack.
-CursorKind.SIZE_OF_PACK_EXPR = CursorKind(143)
-
-# Represents a C++ lambda expression that produces a local function
-# object.
-#
-#  \code
-#  void abssort(float *x, unsigned N) {
-#    std::sort(x, x + N,
-#              [](float a, float b) {
-#                return std::abs(a) < std::abs(b);
-#              });
-#  }
-#  \endcode
-CursorKind.LAMBDA_EXPR = CursorKind(144)
-
-# Objective-c Boolean Literal.
-CursorKind.OBJ_BOOL_LITERAL_EXPR = CursorKind(145)
-
-# Represents the "self" expression in a ObjC method.
-CursorKind.OBJ_SELF_EXPR = CursorKind(146)
-
-# OpenMP 4.0 [2.4, Array Section].
-CursorKind.OMP_ARRAY_SECTION_EXPR = CursorKind(147)
-
-# Represents an @available(...) check.
-CursorKind.OBJC_AVAILABILITY_CHECK_EXPR = CursorKind(148)
-
-# A statement whose specific kind is not exposed via this interface.
-#
-# Unexposed statements have the same operations as any other kind of statement;
-# one can extract their location information, spelling, children, etc. However,
-# the specific kind of the statement is not reported.
+CursorKind.CXX_ADDRSPACE_CAST_EXPR = CursorKind(129)
+CursorKind.CXX_TYPEID_EXPR = CursorKind(130)
+CursorKind.CXX_BOOL_LITERAL_EXPR = CursorKind(131)
+CursorKind.CXX_NULL_PTR_LITERAL_EXPR = CursorKind(132)
+CursorKind.CXX_THIS_EXPR = CursorKind(133)
+CursorKind.CXX_THROW_EXPR = CursorKind(134)
+CursorKind.CXX_NEW_EXPR = CursorKind(135)
+CursorKind.CXX_DELETE_EXPR = CursorKind(136)
+CursorKind.UNARY_EXPR = CursorKind(137)
+CursorKind.OBJC_STRING_LITERAL = CursorKind(138)
+CursorKind.OBJC_ENCODE_EXPR = CursorKind(139)
+CursorKind.OBJC_SELECTOR_EXPR = CursorKind(140)
+CursorKind.OBJC_PROTOCOL_EXPR = CursorKind(141)
+CursorKind.OBJC_BRIDGED_CAST_EXPR = CursorKind(142)
+CursorKind.PACK_EXPANSION_EXPR = CursorKind(143)
+CursorKind.SIZE_OF_PACK_EXPR = CursorKind(144)
+CursorKind.LAMBDA_EXPR = CursorKind(145)
+CursorKind.OBJC_BOOL_LITERAL_EXPR = CursorKind(146)
+CursorKind.OBJC_SELF_EXPR = CursorKind(147)
+CursorKind.OMP_ARRAY_SECTION_EXPR = CursorKind(148)
+CursorKind.OBJC_AVAILABILITY_CHECK_EXPR = CursorKind(149)
+CursorKind.FIXED_POINT_LITERAL = CursorKind(150)
+CursorKind.OMP_ARRAY_SHAPING_EXPR = CursorKind(151)
+CursorKind.OMP_ITERATOR_EXPR = CursorKind(152)
 CursorKind.UNEXPOSED_STMT = CursorKind(200)
-
-# A labelled statement in a function.
 CursorKind.LABEL_STMT = CursorKind(201)
-
-# A compound statement
 CursorKind.COMPOUND_STMT = CursorKind(202)
-
-# A case statement.
 CursorKind.CASE_STMT = CursorKind(203)
-
-# A default statement.
 CursorKind.DEFAULT_STMT = CursorKind(204)
-
-# An if statement.
 CursorKind.IF_STMT = CursorKind(205)
-
-# A switch statement.
 CursorKind.SWITCH_STMT = CursorKind(206)
-
-# A while statement.
 CursorKind.WHILE_STMT = CursorKind(207)
-
-# A do statement.
 CursorKind.DO_STMT = CursorKind(208)
-
-# A for statement.
 CursorKind.FOR_STMT = CursorKind(209)
-
-# A goto statement.
 CursorKind.GOTO_STMT = CursorKind(210)
-
-# An indirect goto statement.
 CursorKind.INDIRECT_GOTO_STMT = CursorKind(211)
-
-# A continue statement.
 CursorKind.CONTINUE_STMT = CursorKind(212)
-
-# A break statement.
 CursorKind.BREAK_STMT = CursorKind(213)
-
-# A return statement.
 CursorKind.RETURN_STMT = CursorKind(214)
-
-# A GNU-style inline assembler statement.
-CursorKind.ASM_STMT = CursorKind(215)
-
-# Objective-C's overall @try-@catch-@finally statement.
+CursorKind.GCC_ASM_STMT = CursorKind(215)
 CursorKind.OBJC_AT_TRY_STMT = CursorKind(216)
-
-# Objective-C's @catch statement.
 CursorKind.OBJC_AT_CATCH_STMT = CursorKind(217)
-
-# Objective-C's @finally statement.
 CursorKind.OBJC_AT_FINALLY_STMT = CursorKind(218)
-
-# Objective-C's @throw statement.
 CursorKind.OBJC_AT_THROW_STMT = CursorKind(219)
-
-# Objective-C's @synchronized statement.
 CursorKind.OBJC_AT_SYNCHRONIZED_STMT = CursorKind(220)
-
-# Objective-C's autorealease pool statement.
 CursorKind.OBJC_AUTORELEASE_POOL_STMT = CursorKind(221)
-
-# Objective-C's for collection statement.
 CursorKind.OBJC_FOR_COLLECTION_STMT = CursorKind(222)
-
-# C++'s catch statement.
 CursorKind.CXX_CATCH_STMT = CursorKind(223)
-
-# C++'s try statement.
 CursorKind.CXX_TRY_STMT = CursorKind(224)
-
-# C++'s for (* : *) statement.
 CursorKind.CXX_FOR_RANGE_STMT = CursorKind(225)
-
-# Windows Structured Exception Handling's try statement.
 CursorKind.SEH_TRY_STMT = CursorKind(226)
-
-# Windows Structured Exception Handling's except statement.
 CursorKind.SEH_EXCEPT_STMT = CursorKind(227)
-
-# Windows Structured Exception Handling's finally statement.
 CursorKind.SEH_FINALLY_STMT = CursorKind(228)
-
-# A MS inline assembly statement extension.
 CursorKind.MS_ASM_STMT = CursorKind(229)
-
-# The null statement.
 CursorKind.NULL_STMT = CursorKind(230)
-
-# Adaptor class for mixing declarations with statements and expressions.
 CursorKind.DECL_STMT = CursorKind(231)
-
-# OpenMP parallel directive.
 CursorKind.OMP_PARALLEL_DIRECTIVE = CursorKind(232)
-
-# OpenMP SIMD directive.
 CursorKind.OMP_SIMD_DIRECTIVE = CursorKind(233)
-
-# OpenMP for directive.
 CursorKind.OMP_FOR_DIRECTIVE = CursorKind(234)
-
-# OpenMP sections directive.
 CursorKind.OMP_SECTIONS_DIRECTIVE = CursorKind(235)
-
-# OpenMP section directive.
 CursorKind.OMP_SECTION_DIRECTIVE = CursorKind(236)
-
-# OpenMP single directive.
 CursorKind.OMP_SINGLE_DIRECTIVE = CursorKind(237)
-
-# OpenMP parallel for directive.
 CursorKind.OMP_PARALLEL_FOR_DIRECTIVE = CursorKind(238)
-
-# OpenMP parallel sections directive.
 CursorKind.OMP_PARALLEL_SECTIONS_DIRECTIVE = CursorKind(239)
-
-# OpenMP task directive.
 CursorKind.OMP_TASK_DIRECTIVE = CursorKind(240)
-
-# OpenMP master directive.
 CursorKind.OMP_MASTER_DIRECTIVE = CursorKind(241)
-
-# OpenMP critical directive.
 CursorKind.OMP_CRITICAL_DIRECTIVE = CursorKind(242)
-
-# OpenMP taskyield directive.
 CursorKind.OMP_TASKYIELD_DIRECTIVE = CursorKind(243)
-
-# OpenMP barrier directive.
 CursorKind.OMP_BARRIER_DIRECTIVE = CursorKind(244)
-
-# OpenMP taskwait directive.
 CursorKind.OMP_TASKWAIT_DIRECTIVE = CursorKind(245)
-
-# OpenMP flush directive.
 CursorKind.OMP_FLUSH_DIRECTIVE = CursorKind(246)
-
-# Windows Structured Exception Handling's leave statement.
 CursorKind.SEH_LEAVE_STMT = CursorKind(247)
-
-# OpenMP ordered directive.
 CursorKind.OMP_ORDERED_DIRECTIVE = CursorKind(248)
-
-# OpenMP atomic directive.
 CursorKind.OMP_ATOMIC_DIRECTIVE = CursorKind(249)
-
-# OpenMP for SIMD directive.
 CursorKind.OMP_FOR_SIMD_DIRECTIVE = CursorKind(250)
-
-# OpenMP parallel for SIMD directive.
-CursorKind.OMP_PARALLELFORSIMD_DIRECTIVE = CursorKind(251)
-
-# OpenMP target directive.
+CursorKind.OMP_PARALLEL_FOR_SIMD_DIRECTIVE = CursorKind(251)
 CursorKind.OMP_TARGET_DIRECTIVE = CursorKind(252)
-
-# OpenMP teams directive.
 CursorKind.OMP_TEAMS_DIRECTIVE = CursorKind(253)
-
-# OpenMP taskgroup directive.
 CursorKind.OMP_TASKGROUP_DIRECTIVE = CursorKind(254)
-
-# OpenMP cancellation point directive.
 CursorKind.OMP_CANCELLATION_POINT_DIRECTIVE = CursorKind(255)
-
-# OpenMP cancel directive.
 CursorKind.OMP_CANCEL_DIRECTIVE = CursorKind(256)
-
-# OpenMP target data directive.
 CursorKind.OMP_TARGET_DATA_DIRECTIVE = CursorKind(257)
-
-# OpenMP taskloop directive.
 CursorKind.OMP_TASK_LOOP_DIRECTIVE = CursorKind(258)
-
-# OpenMP taskloop simd directive.
 CursorKind.OMP_TASK_LOOP_SIMD_DIRECTIVE = CursorKind(259)
-
-# OpenMP distribute directive.
 CursorKind.OMP_DISTRIBUTE_DIRECTIVE = CursorKind(260)
-
-# OpenMP target enter data directive.
 CursorKind.OMP_TARGET_ENTER_DATA_DIRECTIVE = CursorKind(261)
-
-# OpenMP target exit data directive.
 CursorKind.OMP_TARGET_EXIT_DATA_DIRECTIVE = CursorKind(262)
-
-# OpenMP target parallel directive.
 CursorKind.OMP_TARGET_PARALLEL_DIRECTIVE = CursorKind(263)
-
-# OpenMP target parallel for directive.
-CursorKind.OMP_TARGET_PARALLELFOR_DIRECTIVE = CursorKind(264)
-
-# OpenMP target update directive.
+CursorKind.OMP_TARGET_PARALLEL_FOR_DIRECTIVE = CursorKind(264)
 CursorKind.OMP_TARGET_UPDATE_DIRECTIVE = CursorKind(265)
-
-# OpenMP distribute parallel for directive.
-CursorKind.OMP_DISTRIBUTE_PARALLELFOR_DIRECTIVE = CursorKind(266)
-
-# OpenMP distribute parallel for simd directive.
+CursorKind.OMP_DISTRIBUTE_PARALLEL_FOR_DIRECTIVE = CursorKind(266)
 CursorKind.OMP_DISTRIBUTE_PARALLEL_FOR_SIMD_DIRECTIVE = CursorKind(267)
-
-# OpenMP distribute simd directive.
 CursorKind.OMP_DISTRIBUTE_SIMD_DIRECTIVE = CursorKind(268)
-
-# OpenMP target parallel for simd directive.
 CursorKind.OMP_TARGET_PARALLEL_FOR_SIMD_DIRECTIVE = CursorKind(269)
-
-# OpenMP target simd directive.
 CursorKind.OMP_TARGET_SIMD_DIRECTIVE = CursorKind(270)
-
-# OpenMP teams distribute directive.
 CursorKind.OMP_TEAMS_DISTRIBUTE_DIRECTIVE = CursorKind(271)
-
-# builtin c++2a bit cast expr
+CursorKind.OMP_TEAMS_DISTRIBUTE_SIMD_DIRECTIVE = CursorKind(272)
+CursorKind.OMP_TEAMS_DISTRIBUTE_PARALLEL_FOR_SIMD_DIRECTIVE = CursorKind(273)
+CursorKind.OMP_TEAMS_DISTRIBUTE_PARALLEL_FOR_DIRECTIVE = CursorKind(274)
+CursorKind.OMP_TARGET_TEAMS_DIRECTIVE = CursorKind(275)
+CursorKind.OMP_TARGET_TEAMS_DISTRIBUTE_DIRECTIVE = CursorKind(276)
+CursorKind.OMP_TARGET_TEAMS_DISTRIBUTE_PARALLEL_FOR_DIRECTIVE = CursorKind(277)
+CursorKind.OMP_TARGET_TEAMS_DISTRIBUTE_PARALLEL_FOR_SIMD_DIRECTIVE = CursorKind(278)
+CursorKind.OMP_TARGET_TEAMS_DISTRIBUTE_SIMD_DIRECTIVE = CursorKind(279)
 CursorKind.BUILTIN_BIT_CAST_EXPR = CursorKind(280)
-
-###
-# Other Kinds
-
-# Cursor that represents the translation unit itself.
-#
-# The translation unit cursor exists primarily to act as the root cursor for
-# traversing the contents of a translation unit.
+CursorKind.OMP_MASTER_TASK_LOOP_DIRECTIVE = CursorKind(281)
+CursorKind.OMP_PARALLEL_MASTER_TASK_LOOP_DIRECTIVE = CursorKind(282)
+CursorKind.OMP_MASTER_TASK_LOOP_SIMD_DIRECTIVE = CursorKind(283)
+CursorKind.OMP_PARALLEL_MASTER_TASK_LOOP_SIMD_DIRECTIVE = CursorKind(284)
+CursorKind.OMP_PARALLEL_MASTER_DIRECTIVE = CursorKind(285)
+CursorKind.OMP_DEPOBJ_DIRECTIVE = CursorKind(286)
+CursorKind.OMP_SCAN_DIRECTIVE = CursorKind(287)
 CursorKind.TRANSLATION_UNIT = CursorKind(300)
-
-###
-# Attributes
-
-# An attribute whoe specific kind is note exposed via this interface
 CursorKind.UNEXPOSED_ATTR = CursorKind(400)
-
 CursorKind.IB_ACTION_ATTR = CursorKind(401)
 CursorKind.IB_OUTLET_ATTR = CursorKind(402)
 CursorKind.IB_OUTLET_COLLECTION_ATTR = CursorKind(403)
-
 CursorKind.CXX_FINAL_ATTR = CursorKind(404)
 CursorKind.CXX_OVERRIDE_ATTR = CursorKind(405)
 CursorKind.ANNOTATE_ATTR = CursorKind(406)
@@ -1328,45 +920,72 @@ CursorKind.ASM_LABEL_ATTR = CursorKind(407)
 CursorKind.PACKED_ATTR = CursorKind(408)
 CursorKind.PURE_ATTR = CursorKind(409)
 CursorKind.CONST_ATTR = CursorKind(410)
-CursorKind.NODUPLICATE_ATTR = CursorKind(411)
-CursorKind.CUDACONSTANT_ATTR = CursorKind(412)
-CursorKind.CUDADEVICE_ATTR = CursorKind(413)
-CursorKind.CUDAGLOBAL_ATTR = CursorKind(414)
-CursorKind.CUDAHOST_ATTR = CursorKind(415)
-CursorKind.CUDASHARED_ATTR = CursorKind(416)
-
+CursorKind.NO_DUPLICATE_ATTR = CursorKind(411)
+CursorKind.CUDA_CONSTANT_ATTR = CursorKind(412)
+CursorKind.CUDA_DEVICE_ATTR = CursorKind(413)
+CursorKind.CUDA_GLOBAL_ATTR = CursorKind(414)
+CursorKind.CUDA_HOST_ATTR = CursorKind(415)
+CursorKind.CUDA_SHARED_ATTR = CursorKind(416)
 CursorKind.VISIBILITY_ATTR = CursorKind(417)
-
-CursorKind.DLLEXPORT_ATTR = CursorKind(418)
-CursorKind.DLLIMPORT_ATTR = CursorKind(419)
+CursorKind.DLL_EXPORT = CursorKind(418)
+CursorKind.DLL_IMPORT = CursorKind(419)
+CursorKind.NS_RETURNS_RETAINED = CursorKind(420)
+CursorKind.NS_RETURNS_NOT_RETAINED = CursorKind(421)
+CursorKind.NS_RETURNS_AUTORELEASED = CursorKind(422)
+CursorKind.NS_CONSUMES_SELF = CursorKind(423)
+CursorKind.NS_CONSUMED = CursorKind(424)
+CursorKind.OBJC_EXCEPTION = CursorKind(425)
+CursorKind.OBJCNS_OBJECT = CursorKind(426)
+CursorKind.OBJC_INDEPENDENT_CLASS = CursorKind(427)
+CursorKind.OBJC_PRECISE_LIFETIME = CursorKind(428)
+CursorKind.OBJC_RETURNS_INNER_POINTER = CursorKind(429)
+CursorKind.OBJC_REQUIRES_SUPER = CursorKind(430)
+CursorKind.OBJC_ROOT_CLASS = CursorKind(431)
+CursorKind.OBJC_SUBCLASSING_RESTRICTED = CursorKind(432)
+CursorKind.OBJC_EXPLICIT_PROTOCOL_IMPL = CursorKind(433)
+CursorKind.OBJC_DESIGNATED_INITIALIZER = CursorKind(434)
+CursorKind.OBJC_RUNTIME_VISIBLE = CursorKind(435)
+CursorKind.OBJC_BOXABLE = CursorKind(436)
+CursorKind.FLAG_ENUM = CursorKind(437)
 CursorKind.CONVERGENT_ATTR = CursorKind(438)
 CursorKind.WARN_UNUSED_ATTR = CursorKind(439)
 CursorKind.WARN_UNUSED_RESULT_ATTR = CursorKind(440)
 CursorKind.ALIGNED_ATTR = CursorKind(441)
-
-###
-# Preprocessing
 CursorKind.PREPROCESSING_DIRECTIVE = CursorKind(500)
 CursorKind.MACRO_DEFINITION = CursorKind(501)
-CursorKind.MACRO_INSTANTIATION = CursorKind(502)
+CursorKind.MACRO_EXPANSION = CursorKind(502)
 CursorKind.INCLUSION_DIRECTIVE = CursorKind(503)
-
-###
-# Extra declaration
-
-# A module import declaration.
 CursorKind.MODULE_IMPORT_DECL = CursorKind(600)
-# A type alias template declaration
 CursorKind.TYPE_ALIAS_TEMPLATE_DECL = CursorKind(601)
-# A static_assert or _Static_assert node
 CursorKind.STATIC_ASSERT = CursorKind(602)
-# A friend declaration
 CursorKind.FRIEND_DECL = CursorKind(603)
-
-# A code completion overload candidate.
 CursorKind.OVERLOAD_CANDIDATE = CursorKind(700)
 
+CursorKind_FIRST_INVALID = 70
+CursorKind_FIRST_REF = 40
+CursorKind_FIRST_EXPR = 100
+CursorKind_FIRST_STMT = 200
+CursorKind_FIRST_ATTR = 400
+CursorKind_FIRST_DECL = CursorKind.UNEXPOSED_DECL.value
+CursorKind_LAST_DECL = CursorKind.CXX_ACCESS_SPECIFIER.value
+CursorKind_LAST_REF = CursorKind.VARIABLE_REF.value
+CursorKind_LAST_INVALID = CursorKind.INVALID_CODE.value
+CursorKind_LAST_EXPR = CursorKind.OMP_ITERATOR_EXPR.value
+CursorKind_ASM_STMT = CursorKind.GCC_ASM_STMT.value
+CursorKind_LAST_STMT = CursorKind.OMP_SCAN_DIRECTIVE.value
+CursorKind_LAST_ATTR = CursorKind.ALIGNED_ATTR.value
+CursorKind_MACRO_INSTANTIATION = CursorKind.MACRO_EXPANSION.value
+CursorKind_FIRST_PREPROCESSING = CursorKind.PREPROCESSING_DIRECTIVE.value
+CursorKind_LAST_PREPROCESSING = CursorKind.INCLUSION_DIRECTIVE.value
+CursorKind_FIRST_EXTRA_DECL = CursorKind.MODULE_IMPORT_DECL.value
+CursorKind_LAST_EXTRA_DECL = CursorKind.FRIEND_DECL.value
+
 CursorKind.CLASS_TEMPLATE_SPECIALIZATION = CursorKind(1001)
+
+CursorKind.DECOMPOSITION_DECL = CursorKind(1002)
+
+CursorKind.BINDING_DECL = CursorKind(1003)
+
 
 
 ### Template Argument Kinds ###
@@ -1436,17 +1055,21 @@ def cursor_dumps(cursor: "Cursor",
                  indent: int = 2,
                  start_indent=0,
                  type_str_size_limit=100,
-                 max_depth=9999):
+                 max_depth=9999,
+                 with_path=False):
     ss = io.StringIO()
     from collections import deque
-    q = deque([(cursor, start_indent, 0)])  # type: Deque[Tuple[Cursor, int]]
+    q = deque([(cursor, start_indent, 0)])  # type: Deque[Tuple[Cursor, int, int]]
     while q:
         cur_cursor, ind, depth = q.pop()
         if depth >= max_depth:
             continue
         cu_str = cur_cursor.repr_reference(
-            type_str_size_limit=type_str_size_limit)
-        print(" " * ind + cu_str, file=ss)
+            type_str_size_limit=type_str_size_limit, with_path=with_path)
+        inds = list(" " * ind)
+        for i in range(ind // indent):
+            inds[start_indent + indent * i] = "|"
+        print("".join(inds) + cu_str, file=ss)
         nexts = []
         for c in cur_cursor.get_children():
             nexts.append([c, ind + indent, depth + 1])
@@ -1461,27 +1084,44 @@ class Cursor(Structure):
     """
     _fields_ = [("_kind_id", c_int), ("xdata", c_int), ("data", c_void_p * 3)]
 
-    def repr_basic(self, depth=1, type_str_size_limit=100):
-        if self.kind == CursorKind.TRANSLATION_UNIT:
-            return f"TransUnit[{Path(self.spelling).name}]"
+    def repr_basic(self, depth=1, type_str_size_limit=100, with_path=False):
+        hash_str = colors.yellow("{:07x}".format(self.hash))
+        if self.nkind == NodeKind.TranslationUnit:
+            return f"TransUnit<{hash_str}>[{Path(self.spelling).name}]"
         kind_str = _upper_to_standard(str(self.kind).split(".")[1])
+        if ops.nkind_is_decl(self.nkind):
+            kind_str = colors.green(kind_str, 'bold')
+        else:
+            kind_str = colors.orchid(kind_str, 'bold')
         type_str = str(self.type)
         meta = []
         if self.spelling:
-            meta.append(self.spelling)
+            meta.append(colors.green(self.spelling))
         if type_str:
             if len(type_str) > type_str_size_limit:
                 type_str = "..."
             meta.append(colors.green(type_str))
-        meta.append(str(self.location.line))
-        msg = f"{colors.orchid(kind_str, 'bold')}[{'|'.join(meta)}]"
+        if self.nkind == NodeKind.EnumDecl:
+            meta.append("isScoped={}".format(self.is_scoped_enum()))
+        start = self.extent.start
+        end = self.extent.end 
+        loc_str = f"{start.line}-{end.line}({start.column}-{end.column})"
+        meta.append(loc_str)
+        msg = f"{kind_str}<{hash_str}>[{'|'.join(meta)}]"
         if self.semantic_parent is not None:
             if depth > 0:
                 msg += f"({self.semantic_parent.repr_basic(depth - 1, type_str_size_limit)})"
+        if with_path:
+            loc = self.location
+            if loc is not None:
+                msg += f"({loc.file}:{start.line}:{start.column})"
+
         return msg
 
-    def repr_reference(self, depth=1, type_str_size_limit=100):
-        msg = self.repr_basic(depth, type_str_size_limit)
+    def repr_reference(self, depth=1, type_str_size_limit=100, with_path=False):
+        msg = self.repr_basic(depth, type_str_size_limit, with_path)
+        if with_path:
+            return msg
         if self.referenced is None or self.referenced.hash == self.hash:
             return msg
         msg += "->" + self.referenced.repr_reference(
@@ -1491,8 +1131,12 @@ class Cursor(Structure):
     def __repr__(self):
         return self.repr_reference()
 
-    def dumps(self, indent=2, max_depth=9999, type_str_size_limit=100):
-        return cursor_dumps(self, indent, 0, type_str_size_limit, max_depth)
+    def dumps(self, indent=2, max_depth=9999, type_str_size_limit=100, with_path=False):
+        printer = lambda x: x.repr_reference(
+            type_str_size_limit=type_str_size_limit, with_path=with_path)
+        getchild = lambda x: x.get_children()
+        tree_formatter = lambda x: colors.blue(x)
+        return treevis.tree_dumps(self, printer, getchild, indent, 0, max_depth, tree_formatter)
 
     @staticmethod
     def from_location(tu, location):
@@ -1610,9 +1254,13 @@ class Cursor(Structure):
         return conf.lib.clang_getIncludedFile(self)
 
     @property
-    def kind(self):
+    def kind(self) -> CursorKind:
         """Return the kind of this cursor."""
         return CursorKind.from_id(self._kind_id)
+
+    @property 
+    def nkind(self):
+        return NodeKind(self._kind_id)
 
     @property
     def spelling(self):
@@ -1737,7 +1385,7 @@ class Cursor(Structure):
         return self._canonical
 
     @property
-    def result_type(self):
+    def result_type(self) -> "Type":
         """Retrieve the Type of the result for this Cursor."""
         if not hasattr(self, '_result_type'):
             self._result_type = conf.lib.clang_getCursorResultType(self)
@@ -1869,7 +1517,7 @@ class Cursor(Structure):
         """Returns the raw comment text associated with that Cursor"""
         return conf.lib.clang_Cursor_getRawCommentText(self)
 
-    def get_arguments(self):
+    def get_arguments(self) -> Generator["Cursor", None, None]:
         """Return an iterator for accessing the arguments of this cursor."""
         num_args = conf.lib.clang_Cursor_getNumArguments(self)
         for i in range(0, num_args):
@@ -1949,6 +1597,17 @@ class Cursor(Structure):
                                      children)
         return iter(children)
 
+    def get_children_with_nkind(self, target_nkind: Union[NodeKind, Set[NodeKind]]) -> Generator["Cursor", None, None]:
+        target_nkind_set = set() # type: Set[NodeKind]
+        if isinstance(target_nkind, set):
+            target_nkind_set.update(target_nkind)
+        else:
+            target_nkind_set.add(target_nkind)
+        for node in self.get_children():
+            if node.nkind in target_nkind_set:
+                yield node
+
+
     def walk_preorder(self):
         """Depth-first preorder walk over the cursor and its descendants.
         Yields cursors.
@@ -1957,6 +1616,21 @@ class Cursor(Structure):
         for child in self.get_children():
             for descendant in child.walk_preorder():
                 yield descendant
+    
+    def walk_preorder_stack(self, max_depth=9999):
+        """Depth-first preorder walk over the cursor and its descendants.
+        Yields cursors. stack based.
+        """
+        q = [(self, 0)]  # type: List[Tuple[Cursor, int]]
+        while q:
+            cur_cursor, depth = q.pop()
+            if depth >= max_depth:
+                continue
+            yield cur_cursor
+            nexts = []
+            for c in cur_cursor.get_children():
+                nexts.append([c, depth + 1])
+            q.extend(nexts[::-1])
 
     def get_tokens(self):
         """Obtain Token instances formulating that compose this Cursor.
@@ -2334,7 +2008,7 @@ class Type(Structure):
 
                 return self.length
 
-            def __getitem__(self, key):
+            def __getitem__(self, key) -> "Type":
                 # FIXME Support slice objects.
                 if not isinstance(key, int):
                     raise TypeError("Must supply a non-negative int.")
@@ -2401,10 +2075,10 @@ class Type(Structure):
 
         return res
 
-    def get_num_template_arguments(self):
+    def get_num_template_arguments(self) -> int:
         return conf.lib.clang_Type_getNumTemplateArguments(self)
 
-    def get_template_argument_type(self, num):
+    def get_template_argument_type(self, num) -> "Type":
         return conf.lib.clang_Type_getTemplateArgumentAsType(self, num)
 
     def get_canonical(self) -> "Type":
@@ -2455,7 +2129,7 @@ class Type(Structure):
         """Determine whether this Type represents plain old data (POD)."""
         return conf.lib.clang_isPODType(self)
 
-    def get_pointee(self):
+    def get_pointee(self) -> "Type":
         """
         For pointer types, returns the type of the pointee.
         """
@@ -2547,7 +2221,7 @@ class Type(Structure):
             conf.lib.clang.getExceptionSpecificationType(self))
 
     @property
-    def spelling(self):
+    def spelling(self) -> str:
         """Retrieve the spelling of this Type."""
         return conf.lib.clang_getTypeSpelling(self)
 
@@ -2578,7 +2252,10 @@ class Type(Structure):
         """
         return self._get_plain_type(self)
 
-
+    def remove_ref(self) -> "Type":
+        if not self.kind in self.RefTypes:
+            return self 
+        return self.get_pointee()
 ## CIndex Objects ##
 
 # CIndex objects (derived from ClangObject) are essentially lightweight
@@ -3294,7 +2971,7 @@ class TranslationUnit(ClangObject):
             if loc.file is not None and path is not None and Path(
                     loc.file.name) != Path(path):
                 continue
-            print(child.dumps(indent, max_depth, type_str_size_limit), file=ss)
+            print(child.dumps(indent, max_depth, type_str_size_limit), file=ss, end='')
         return ss.getvalue()
 
 class File(ClangObject):
@@ -3578,6 +3255,8 @@ functionList = [
     ("clang_defaultDiagnosticDisplayOptions", [], c_uint),
     ("clang_defaultSaveOptions", [TranslationUnit], c_uint),
     ("clang_disposeCodeCompleteResults", [CodeCompletionResults]),
+
+    ("clang_cursorDevelop", [Cursor], bool),
 
     # ("clang_disposeCXTUResourceUsage",
     #  [CXTUResourceUsage]),

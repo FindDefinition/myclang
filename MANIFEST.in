@@ -2,3 +2,4 @@ include myclang/cext/libclang/*.cpp
 include myclang/cext/libclang/*.h
 include myclang/cext/clangutils.cc
 include myclang/cext/libclang.json
+recursive-include myclang/clang_system_include *

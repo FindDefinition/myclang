@@ -50,6 +50,8 @@
 #include <memory>
 #include <set>
 #include <system_error>
+#include "compiler.h"
+#include <iostream>
 using namespace clang;
 using namespace clang::driver;
 using namespace llvm::opt;
@@ -340,17 +342,33 @@ static int ExecuteCC1Tool(SmallVectorImpl<const char *> &ArgV) {
   return 1;
 }
 
-int main(int argc_, const char **argv_) {
+void print_argv(SmallVector<const char *, 256>& argv){
+  std::cout << "=================" << std::endl;
+
+  std::vector<std::string> argvs(argv.begin(), argv.end());
+  for (auto& c : argv){
+    if (!c || *c == '\0'){
+      continue;
+    }
+    argvs.push_back(std::string(c));
+  }
+
+  for (auto s : argvs){
+    std::cout << s << " ";
+  }
+  std::cout << std::endl;
+}
+
+int clang_main(int argc_, const char **argv_) {
   noteBottomOfStack();
   llvm::InitLLVM X(argc_, argv_);
   llvm::setBugReportMsg("PLEASE submit a bug report to " BUG_REPORT_URL
                         " and include the crash backtrace, preprocessed "
                         "source, and associated run script.\n");
   SmallVector<const char *, 256> argv(argv_, argv_ + argc_);
-
+  print_argv(argv);
   if (llvm::sys::Process::FixupStandardFileDescriptors())
     return 1;
-
   llvm::InitializeAllTargets();
   auto TargetAndMode = ToolChain::getTargetAndModeFromProgramName(argv[0]);
 
@@ -393,12 +411,14 @@ int main(int argc_, const char **argv_) {
   if (MarkEOLs && argv.size() > 1 && StringRef(argv[1]).startswith("-cc1"))
     MarkEOLs = false;
   llvm::cl::ExpandResponseFiles(Saver, Tokenizer, argv, MarkEOLs);
+  print_argv(argv);
 
   // Handle -cc1 integrated tools, even if -cc1 was expanded from a response
   // file.
   auto FirstArg = std::find_if(argv.begin() + 1, argv.end(),
                                [](const char *A) { return A != nullptr; });
   if (FirstArg != argv.end() && StringRef(*FirstArg).startswith("-cc1")) {
+
     // If -cc1 came from a response file, remove the EOL sentinels.
     if (MarkEOLs) {
       auto newEnd = std::remove(argv.begin(), argv.end(), nullptr);
@@ -442,6 +462,7 @@ int main(int argc_, const char **argv_) {
       argv.append(AppendedOpts.begin(), AppendedOpts.end());
     }
   }
+  print_argv(argv);
 
   std::set<std::string> SavedStrings;
   // Handle CCC_OVERRIDE_OPTIONS, used for editing a command line behind the
@@ -493,7 +514,7 @@ int main(int argc_, const char **argv_) {
     // Ensure the CC1Command actually catches cc1 crashes
     llvm::CrashRecoveryContext::Enable();
   }
-
+  std::cout << "???" << std::endl;
   std::unique_ptr<Compilation> C(TheDriver.BuildCompilation(argv));
   int Res = 1;
   bool IsCrash = false;
@@ -563,4 +584,9 @@ int main(int argc_, const char **argv_) {
   // If we have multiple failing commands, we return the result of the first
   // failing command.
   return Res;
+}
+
+
+int compiler_main(std::vector<const char*> args) {
+    return clang_main(args.size(), args.data());
 }

@@ -195,7 +195,6 @@
             "pthread",
             "dl",
             "tinfo",
-            "rt",
             "m",
             "z",
             "LLVMDemangle"
@@ -386,8 +385,6 @@
             "LLVMCodeGen",
             "LLVMObjCARCOpts",
             "LLVMExtensions",
-            "Polly",
-            "PollyISL",
             "LLVMPasses",
             "LLVMTarget",
             "LLVMCoroutines",

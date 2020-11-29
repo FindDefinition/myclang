@@ -81,6 +81,10 @@ CXCursorKind getCursorKindForDeclCustom(const Decl *D) {
     return CXCursor_FriendDecl;
   case Decl::TranslationUnit:
     return CXCursor_TranslationUnit;
+  case Decl::Binding:
+    return CXCursorKind(CXCursorEx_BindingDecl);
+  case Decl::Decomposition:
+    return CXCursorKind(CXCursorEx_DecompositionDecl);
 
   case Decl::Using:
   case Decl::UnresolvedUsingValue:

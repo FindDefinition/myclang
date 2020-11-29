@@ -142,10 +142,10 @@ def get_executable_path(executable: str) -> str:
 
 
 def get_clang_root() -> Optional[Path]:
-    path = get_executable_path("clang")
-    clang_folder = os.getenv("CLANG_LIBRARY_PATH", None)
+    clang_folder = os.getenv("LLVM_ROOT", None)
     if clang_folder:
         return Path(clang_folder)
+    path = get_executable_path("clang")
     if path:
         clang_folder = Path(path).parent.parent / "lib"
     if clang_folder is None:
@@ -172,7 +172,6 @@ else:
         'build_ext': CCImportBuild,
     }
     LIBCLANG_SOURCES = list((LIBCLANG_MODULE_PATH / "libclang").glob("*.cpp"))
-    print(len(LIBCLANG_SOURCES))
     libclang_ext = CCImportExtension(
         "myclang",
         LIBCLANG_SOURCES,
