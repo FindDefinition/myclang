@@ -37,7 +37,7 @@ from array import ArrayType
 from ctypes import *
 from enum import Enum
 from pathlib import Path
-from typing import Deque, Dict, Generator, Iterator, List, Optional, Union, Set
+from typing import Deque, Dict, Generator, Iterator, List, Optional, Union, Set, Tuple
 
 from myclang.utils import colors, treevis
 from myclang.betterenums import NodeKind
@@ -1328,6 +1328,15 @@ class Cursor(Structure):
             self._extent = conf.lib.clang_getCursorExtent(self)
 
         return self._extent
+
+    @property
+    def extent_offset(self) -> Tuple[int, int]:
+        """
+        Return the source range (the range of text) occupied by the entity
+        pointed at by the cursor.
+        """
+        extent = self.extent 
+        return (extent.start.offset, extent.end.offset)
 
     @property
     def storage_class(self):
@@ -2761,7 +2770,7 @@ class TranslationUnit(ClangObject):
         """Get the original translation unit source file name."""
         return conf.lib.clang_getTranslationUnitSpelling(self)
 
-    def get_includes(self):
+    def get_includes(self) -> Iterator["FileInclusion"]:
         """
         Return an iterable sequence of FileInclusion objects that describe the
         sequence of inclusions in a translation unit. The first object in
@@ -3019,10 +3028,10 @@ class FileInclusion(object):
     file, the location of the '#include' directive and the depth of the included
     file in the stack. Note that the input file has depth 0.
     """
-    def __init__(self, src, tgt, loc, depth):
-        self.source = src
+    def __init__(self, src, tgt, loc: "SourceLocation", depth):
+        self.source = src # type: str
         self.include = tgt
-        self.location = loc
+        self.location = loc # type: SourceLocation
         self.depth = depth
 
     @property
