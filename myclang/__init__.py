@@ -1,4 +1,4 @@
-from .cext import CLANG_LIBPATH
+from .cext import LIBCLANG_PATH
 from .constants import MYCLANG_SYSTEM_INCLUDES
 
 from pathlib import Path 
@@ -15,4 +15,4 @@ def get_system_include(compiler: str="clang") -> List[Path]:
         return standalone_headers
     # find system include by available compiler
     # for windows, you need to start terminal with visual studio dev environments
-    return compat.get_system_include_paths("clang++")
+    return compat.get_system_include_paths(compiler)

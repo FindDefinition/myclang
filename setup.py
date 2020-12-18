@@ -29,7 +29,7 @@ VERSION = None
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "ccimport>=0.1.7",
+    "ccimport>=0.1.8",
 ]
 if sys.version_info[:2] == (3, 6):
     REQUIRED.append("dataclasses")
