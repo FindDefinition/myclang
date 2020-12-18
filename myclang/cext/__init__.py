@@ -76,7 +76,7 @@ if ENABLE_JIT:
                                      link_options=flags)
     clcompiler = ccimport.autoimport([Path(__file__).parent / "clcompiler.cc"],
                                      MYCLANG_ROOT / "clcompiler",
-                                     includes=[CLANG_ROOT / "include", Path(__file__).parent / "clangcompiler"],
+                                     includes=[CLANG_ROOT / "include", Path(__file__).resolve().parent / "clangcompiler"],
                                      libpaths=[MYCLANG_ROOT],
                                      libraries=[LIBCLANG_NAME],
                                      link_options=flags)
