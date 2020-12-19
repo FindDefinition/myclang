@@ -8,7 +8,7 @@ from myclang.cindex import Cursor, CursorKind, TranslationUnit
 
 from ccimport import compat
 from myclang.global_cfg import GLOBAL_CONFIG
-from myclang.constants import MYCLANG_RESOURCE_INCLUDE
+from myclang.constants import MYCLANG_RESOURCE_INCLUDE, MYCLANG_CEXT_ROOT
 from myclang.utils import tempdir
 from myclang.resource import get_executable_path
 import myclang
@@ -43,6 +43,14 @@ def create_pch(include: str,
         include, "-o",
         str(pch_out_path)
     ]
+    if compat.InWindows:
+        # no way to add rpath-like to executable, so we need to append myclang.dll dir 
+        env = os.environ.copy()
+        paths = env["PATH"].split(";")
+        paths.append(str(MYCLANG_CEXT_ROOT))
+        env["PATH"] = ";".join(paths)
+        return subprocess.check_call(cmds, env=env)
+
     return subprocess.check_call(cmds)
 
 
@@ -61,8 +69,8 @@ def from_ast_file(sources: List[Union[Path, str]],
     includes = includes.copy()
     includes.extend(GLOBAL_CONFIG.includes)
     if compat.InWindows:
-        assert get_executable_path("cl") is not None
-        includes.extend(compat.get_system_include_paths("cl")), "you need to install vs in windows"
+        assert get_executable_path("cl") is not None, "you must run inside vs develop prompt"
+        # includes.extend(compat.get_system_include_paths("cl")), "you need to install vs in windows"
     elif compat.InLinux:
         assert get_executable_path("g++") is not None, "you need to install gcc in linux"
         includes.extend(compat.get_system_include_paths("g++"))
@@ -104,10 +112,17 @@ def from_ast_file(sources: List[Union[Path, str]],
         # os.environ["MYCLANG_WRONG_PREFIX"] = str(python_root)
         # TODO run clcompiler.compiler_main_bind(cmds) in subprocess to control .ast file
         # clcompiler.compiler_main_bind(cmds)
-        subprocess.check_call(cmds, cwd=str(temp), stderr=subprocess.STDOUT)
+        if compat.InWindows:
+            # no way to add rpath-like to executable, so we need to append myclang.dll dir 
+            env = os.environ.copy()
+            paths = env["PATH"].split(";")
+            paths.append(str(MYCLANG_CEXT_ROOT))
+            env["PATH"] = ";".join(paths)
+            subprocess.check_call(cmds, cwd=str(temp), env=env, stderr=subprocess.STDOUT)
+        else:
+            subprocess.check_call(cmds, cwd=str(temp), stderr=subprocess.STDOUT)
         for source_path in source_paths:
             out_path: Path = temp / (source_path.stem + ".ast")
-            print(out_path.exists())
             res.append(TranslationUnit.from_ast_file(str(out_path), index))
     return res
 
@@ -126,8 +141,8 @@ def direct_gen(sources: List[Union[Path, str]],
     includes.extend(GLOBAL_CONFIG.includes)
     includes.append(str(MYCLANG_RESOURCE_INCLUDE))
     if compat.InWindows:
-        assert get_executable_path("cl") is not None
-        includes.extend(compat.get_system_include_paths("cl")), "you need to install vs in windows"
+        assert get_executable_path("cl") is not None, "you must run inside vs develop prompt"
+        # includes.extend(compat.get_system_include_paths("cl")), "you need to install vs in windows"
     elif compat.InLinux:
         assert get_executable_path("g++") is not None, "you need to install gcc in linux"
         includes.extend(compat.get_system_include_paths("g++"))

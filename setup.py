@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 from shutil import rmtree
+import shutil
 from typing import Optional, Union
 
 from ccimport import compat
@@ -133,10 +134,19 @@ class UploadCommand(Command):
 
 class CreateLinkCallback(ExtCallback):
     def __call__(self, ext: Union["AutoImportExtension", "CCImportExtension"], extdir: Path, target_path: Path):
-        assert target_path.name == "clang"
-        clangpp_p = extdir / "myclang" / "clang_fake_root" / "bin" / "clang++"
-        clang_p = clangpp_p.parent / "clang"
-        clangpp_p.symlink_to(clang_p, False)
+        clang_name = "clang"
+        clangpp_name = "clang++"
+        if compat.InWindows:
+            clang_name = "clang.exe"
+            clangpp_name = "clang++.exe"
+
+        assert target_path.name == clang_name
+        clangpp_p = extdir / "myclang" / "clang_fake_root" / "bin" / clangpp_name
+        shutil.copy(str(target_path), clangpp_p)
+        # permission denied when create symlink in windows. 
+        # so we just copy them.
+
+        # clangpp_p.symlink_to(target_path, False)
 
 
 def get_executable_path(executable: str) -> str:
@@ -240,10 +250,11 @@ else:
         link_options=flags,
         std="c++14",
     )
+    compiler_path = "myclang/clang_fake_root/bin/clang"
     clang_compiler_ext = CCImportExtension(
         "clang",
         [LIBCLANG_MODULE_PATH / "clangmain.cc"],
-        "myclang/clang_fake_root/bin/clang",
+        compiler_path,
         includes=[CLANG_ROOT / "include", LIBCLANG_INCLUDE],
         libpaths=["{extdir}/myclang/cext"],
         libraries=["myclang"],

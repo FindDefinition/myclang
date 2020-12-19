@@ -6,6 +6,8 @@ CODEAI_SAVE_ROOT.mkdir(exist_ok=True)
 MYCLANG_ROOT = CODEAI_SAVE_ROOT / "myclang"
 MYCLANG_ROOT.mkdir(exist_ok=True)
 
+MYCLANG_CEXT_ROOT = Path(__file__).parent / "cext"
+
 MYCLANG_FAKE_CLANG_ROOT = Path(__file__).parent / "clang_fake_root"
 MYCLANG_RESOURCE_INCLUDE = MYCLANG_FAKE_CLANG_ROOT / "lib" / "clang" / "11.0.0" / "include"
 

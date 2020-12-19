@@ -2,7 +2,7 @@ from myclang.constants import MYCLANG_FAKE_CLANG_ROOT
 from pathlib import Path 
 import subprocess
 from typing import List, Union 
-
+import contextlib
 from ccimport import compat
 
 def get_executable_path(executable: str) -> str:
@@ -37,3 +37,4 @@ def get_clang_compiler_path() -> Union[None, Path]:
     if not root:
         return None 
     return root / "bin" / "clang++"
+
