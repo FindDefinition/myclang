@@ -79,7 +79,7 @@ jobs:
         shell: powershell
   
   build:
-    needs: build-windows
+    # needs: build-windows
     runs-on: ubuntu-20.04
     strategy:
       matrix:
