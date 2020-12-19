@@ -197,6 +197,7 @@
             "dl",
             "z",
             "m",
+            "tinfo",
             "LLVMDemangle"
         ],
         "cflags": [

@@ -50,8 +50,9 @@
 #include <memory>
 #include <set>
 #include <system_error>
-#include "compiler.h"
+#include <compiler.h>
 #include <iostream>
+#include <cstdlib>
 using namespace clang;
 using namespace clang::driver;
 using namespace llvm::opt;
@@ -342,23 +343,6 @@ static int ExecuteCC1Tool(SmallVectorImpl<const char *> &ArgV) {
   return 1;
 }
 
-void print_argv(SmallVector<const char *, 256>& argv){
-  std::cout << "=================" << std::endl;
-
-  std::vector<std::string> argvs(argv.begin(), argv.end());
-  for (auto& c : argv){
-    if (!c || *c == '\0'){
-      continue;
-    }
-    argvs.push_back(std::string(c));
-  }
-
-  for (auto s : argvs){
-    std::cout << s << " ";
-  }
-  std::cout << std::endl;
-}
-
 int clang_main(int argc_, const char **argv_) {
   noteBottomOfStack();
   llvm::InitLLVM X(argc_, argv_);
@@ -366,7 +350,6 @@ int clang_main(int argc_, const char **argv_) {
                         " and include the crash backtrace, preprocessed "
                         "source, and associated run script.\n");
   SmallVector<const char *, 256> argv(argv_, argv_ + argc_);
-  print_argv(argv);
   if (llvm::sys::Process::FixupStandardFileDescriptors())
     return 1;
   llvm::InitializeAllTargets();
@@ -411,8 +394,6 @@ int clang_main(int argc_, const char **argv_) {
   if (MarkEOLs && argv.size() > 1 && StringRef(argv[1]).startswith("-cc1"))
     MarkEOLs = false;
   llvm::cl::ExpandResponseFiles(Saver, Tokenizer, argv, MarkEOLs);
-  print_argv(argv);
-
   // Handle -cc1 integrated tools, even if -cc1 was expanded from a response
   // file.
   auto FirstArg = std::find_if(argv.begin() + 1, argv.end(),
@@ -462,8 +443,6 @@ int clang_main(int argc_, const char **argv_) {
       argv.append(AppendedOpts.begin(), AppendedOpts.end());
     }
   }
-  print_argv(argv);
-
   std::set<std::string> SavedStrings;
   // Handle CCC_OVERRIDE_OPTIONS, used for editing a command line behind the
   // scenes.
@@ -514,7 +493,7 @@ int clang_main(int argc_, const char **argv_) {
     // Ensure the CC1Command actually catches cc1 crashes
     llvm::CrashRecoveryContext::Enable();
   }
-  std::cout << "???" << std::endl;
+
   std::unique_ptr<Compilation> C(TheDriver.BuildCompilation(argv));
   int Res = 1;
   bool IsCrash = false;

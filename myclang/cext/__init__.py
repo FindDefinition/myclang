@@ -53,12 +53,13 @@ if ENABLE_JIT:
 
     if compat.InWindows:
         LIBCLANG_PATH = CLANG_ROOT / "bin" / "libclang.dll"
+    LIBCLANG_INCLUDE = Path(__file__).parent.resolve() / "include"
     LIBCLANG_SOURCES = list((Path(__file__).parent / "libclang").glob("*.cpp"))
     CLANG_COMPILER_SOURCES = list((Path(__file__).parent / "clangcompiler").glob("*.cpp"))
     LIBCLANG_PATH = ccimport.ccimport(
         LIBCLANG_SOURCES,
         MYCLANG_ROOT / "myclang",
-        includes=[CLANG_ROOT / "include"],
+        includes=[CLANG_ROOT / "include", LIBCLANG_INCLUDE],
         libpaths=[CLANG_ROOT / "lib"],
         libraries=LIBCLANG_BUILD_META["libraries"],
         compile_options=LIBCLANG_BUILD_META["cflags"],
@@ -70,13 +71,13 @@ if ENABLE_JIT:
     # FIXME find out SIGSEGV error when exit if import clang libraries
     clangutils = ccimport.autoimport([Path(__file__).parent / "clangutils.cc"],
                                      MYCLANG_ROOT / "clangutils",
-                                     includes=[CLANG_ROOT / "include"],
+                                     includes=[CLANG_ROOT / "include", LIBCLANG_INCLUDE],
                                      libpaths=[MYCLANG_ROOT],
                                      libraries=[LIBCLANG_NAME],
                                      link_options=flags)
     clcompiler = ccimport.autoimport([Path(__file__).parent / "clcompiler.cc"],
                                      MYCLANG_ROOT / "clcompiler",
-                                     includes=[CLANG_ROOT / "include", Path(__file__).resolve().parent / "clangcompiler"],
+                                     includes=[CLANG_ROOT / "include", LIBCLANG_INCLUDE],
                                      libpaths=[MYCLANG_ROOT],
                                      libraries=[LIBCLANG_NAME],
                                      link_options=flags)

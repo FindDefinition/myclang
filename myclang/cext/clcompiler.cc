@@ -1,4 +1,5 @@
-#include "compiler.h"
+#include <compiler.h>
+#include <string>
 #define CODEAI_EXPORT
 
 int CODEAI_EXPORT compiler_main_bind(std::vector<std::string> args){

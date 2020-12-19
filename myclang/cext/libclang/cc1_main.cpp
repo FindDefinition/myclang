@@ -44,10 +44,13 @@
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/ADT/ArrayRef.h"
 #include <cstdio>
 #include <vector>
 #include <string>
 #include <iostream>
+#include <regex>
+#include <cstdlib>
 #ifdef CLANG_HAVE_RLIMITS
 #include <sys/resource.h>
 #endif
@@ -183,6 +186,15 @@ static int PrintSupportedCPUs(std::string TargetStr) {
   return 0;
 }
 
+std::vector<std::string> split(const std::string& input, const std::string regex) {
+    // passing -1 as the submatch index parameter performs splitting
+    std::regex re(regex);
+    std::sregex_token_iterator
+        first{input.begin(), input.end(), re, -1},
+        last;
+    return {first, last};
+}
+
 int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   ensureSufficientStack();
   std::vector<std::string> Argv_str;
@@ -192,11 +204,28 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     }
     Argv_str.push_back(std::string(c));
   }
-
+  auto myclang_fixed_root_env = std::getenv("MYCLANG_FIXED_ROOT");
+  auto myclang_wrong_prefix_env = std::getenv("MYCLANG_WRONG_PREFIX");
+  if (myclang_fixed_root_env && myclang_wrong_prefix_env){
+    std::string myclang_fixed_root = myclang_fixed_root_env;
+    std::string myclang_wrong_prefix = myclang_wrong_prefix_env;
+    SmallVector<const char *, 256> argv_my(Argv_str.size());
+    for (int i = 0; i < Argv_str.size(); ++i){
+      if (Argv_str[i].rfind(myclang_wrong_prefix, 0) == 0){
+        Argv_str[i].replace(0, myclang_wrong_prefix.size(), myclang_fixed_root);
+      }
+      argv_my[i] = Argv_str[i].c_str();
+    }
+    SmallVectorImpl<const char *> &ArgVMy = argv_my;
+    Argv = makeArrayRef(ArgVMy);
+  }
+  /*
+  std::cout << Argv.size() << "WTF " << myclang_wrong_prefix << " " << Argv0 << " ";
   for (auto s : Argv_str){
-    std::cout << s << " ";
+    std::cout << s << "|";
   }
   std::cout << std::endl;
+  */
   std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 
