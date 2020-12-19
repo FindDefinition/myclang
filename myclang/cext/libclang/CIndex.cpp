@@ -58,6 +58,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include <mutex>
 
+#include "DeclKindToCXCursor.h"
+
 #if LLVM_ENABLE_THREADS != 0 && defined(__APPLE__)
 #define USE_DARWIN_THREADS
 #endif
@@ -783,6 +785,12 @@ bool CursorVisitor::VisitEnumConstantDecl(EnumConstantDecl *D) {
   if (Expr *Init = D->getInitExpr())
     return Visit(MakeCXCursor(Init, StmtParent, TU, RegionOfInterest));
   return false;
+}
+
+bool CursorVisitor::VisitBindingDecl(BindingDecl *BD) {
+  if (Expr *binding = BD->getBinding())
+    return Visit(MakeCXCursor(binding, StmtParent, TU, RegionOfInterest));
+  return VisitValueDecl(BD);
 }
 
 bool CursorVisitor::VisitDeclaratorDecl(DeclaratorDecl *DD) {
@@ -5883,7 +5891,7 @@ unsigned clang_isInvalid(enum CXCursorKind K) {
 unsigned clang_isDeclaration(enum CXCursorKind K) {
   return (K >= CXCursor_FirstDecl && K <= CXCursor_LastDecl) ||
          (K >= CXCursor_FirstExtraDecl && K <= CXCursor_LastExtraDecl) || 
-         (K >= CXCursorEx_FirstDecl && K <= CXCursorEx_FirstDecl);
+         (K >= CXCursorEx_FirstDecl && K <= CXCursorEx_LastDecl);
 }
 
 unsigned clang_isInvalidDeclaration(CXCursor C) {

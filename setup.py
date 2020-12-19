@@ -11,11 +11,12 @@ import subprocess
 import sys
 from pathlib import Path
 from shutil import rmtree
-from typing import Optional
+import shutil
+from typing import Optional, Union
 
 from ccimport import compat
 from ccimport.extension import (AutoImportExtension, CCImportBuild,
-                                CCImportExtension)
+                                CCImportExtension, ExtCallback)
 from setuptools import Command, find_packages, setup
 
 # Package meta-data.
@@ -24,12 +25,12 @@ DESCRIPTION = 'standalone libclang code with some modifications'
 URL = 'https://github.com/FindDefinition/myclang'
 EMAIL = 'yanyan.sub@outlook.com'
 AUTHOR = 'Yan Yan'
-REQUIRES_PYTHON = '>=3.6'
+REQUIRES_PYTHON = '>=3.5'
 VERSION = None
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "ccimport>=0.1.2",
+    "ccimport>=0.1.11",
 ]
 if sys.version_info[:2] == (3, 6):
     REQUIRED.append("dataclasses")
@@ -90,6 +91,9 @@ meta_path = os.path.join(cwd, NAME, 'build_meta.py')
 with open(meta_path, 'w') as f:
     f.write("ENABLE_JIT = {}\n".format(enable_jit_str))
 
+static_zlib_path = os.environ.get("MYCLANG_STATIC_ZLIB", None)
+static_tinfo_path = os.environ.get("MYCLANG_STATIC_TINFO", None)
+
 
 class UploadCommand(Command):
     """Support setup.py upload."""
@@ -128,6 +132,22 @@ class UploadCommand(Command):
 
         sys.exit()
 
+class CreateLinkCallback(ExtCallback):
+    def __call__(self, ext: Union["AutoImportExtension", "CCImportExtension"], extdir: Path, target_path: Path):
+        clang_name = "clang"
+        clangpp_name = "clang++"
+        if compat.InWindows:
+            clang_name = "clang.exe"
+            clangpp_name = "clang++.exe"
+
+        assert target_path.name == clang_name
+        clangpp_p = extdir / "myclang" / "clang_fake_root" / "bin" / clangpp_name
+        shutil.copy(str(target_path), str(clangpp_p))
+        # permission denied when create symlink in windows. 
+        # so we just copy them.
+
+        # clangpp_p.symlink_to(target_path, False)
+
 
 def get_executable_path(executable: str) -> str:
     if compat.InWindows:
@@ -142,10 +162,10 @@ def get_executable_path(executable: str) -> str:
 
 
 def get_clang_root() -> Optional[Path]:
-    path = get_executable_path("clang")
-    clang_folder = os.getenv("CLANG_LIBRARY_PATH", None)
+    clang_folder = os.getenv("LLVM_ROOT", None)
     if clang_folder:
         return Path(clang_folder)
+    path = get_executable_path("clang")
     if path:
         clang_folder = Path(path).parent.parent / "lib"
     if clang_folder is None:
@@ -160,10 +180,25 @@ if enable_jit:
     ext_modules = []
 else:
     LIBCLANG_MODULE_PATH = Path(__file__).parent / "myclang" / "cext"
-
     with (LIBCLANG_MODULE_PATH / "libclang.json").open("r") as f:
         LIBCLANG_BUILD_META_ALL = json.load(f)
     LIBCLANG_BUILD_META = LIBCLANG_BUILD_META_ALL[compat.OS.value]
+    if 'tinfo' in LIBCLANG_BUILD_META["libraries"]:
+        # currently tinfo static build have bug in manylinux docker
+        LIBCLANG_BUILD_META["libraries"].remove('tinfo')
+
+    if static_zlib_path is not None and "z" in LIBCLANG_BUILD_META["libraries"]:
+        idx = LIBCLANG_BUILD_META["libraries"].index("z")
+        if Path(static_zlib_path).is_absolute():
+            LIBCLANG_BUILD_META["libraries"][idx] = "path::" + static_zlib_path
+        else:
+            LIBCLANG_BUILD_META["libraries"][idx] = "file::" + static_zlib_path
+    if static_tinfo_path is not None and "tinfo" in LIBCLANG_BUILD_META["libraries"]:
+        idx = LIBCLANG_BUILD_META["libraries"].index("tinfo")
+        if Path(static_tinfo_path).is_absolute():
+            LIBCLANG_BUILD_META["libraries"][idx] = "path::" + static_tinfo_path
+        else:
+            LIBCLANG_BUILD_META["libraries"][idx] = "file::" + static_tinfo_path
 
     CLANG_ROOT = get_clang_root()
     assert CLANG_ROOT is not None, "can't find clang, install clang first."
@@ -171,13 +206,14 @@ else:
         'upload': UploadCommand,
         'build_ext': CCImportBuild,
     }
+    LIBCLANG_INCLUDE = LIBCLANG_MODULE_PATH.resolve() / "include"
+
     LIBCLANG_SOURCES = list((LIBCLANG_MODULE_PATH / "libclang").glob("*.cpp"))
-    print(len(LIBCLANG_SOURCES))
     libclang_ext = CCImportExtension(
         "myclang",
         LIBCLANG_SOURCES,
         "myclang/cext/myclang",
-        includes=[CLANG_ROOT / "include"],
+        includes=[CLANG_ROOT / "include", LIBCLANG_INCLUDE],
         libpaths=[CLANG_ROOT / "lib"],
         libraries=LIBCLANG_BUILD_META["libraries"],
         compile_options=LIBCLANG_BUILD_META["cflags"],
@@ -186,20 +222,49 @@ else:
         std="c++14",
     )
     flags = []
+    clang_main_flags = []
     if not compat.InWindows:
-        flags.append("-Wl,-rpath,{}".format("."))
+        flags.append("-Wl,--enable-new-dtags")
+        # ninja need to escape dollar sign
+        flags.append("-Wl,-rpath='$$ORIGIN'")
+        clang_main_flags.append("-Wl,--enable-new-dtags")
+        clang_main_flags.append("-Wl,-rpath='$$ORIGIN/../../cext'")
 
     clangutils_ext = AutoImportExtension(
         "clangutils",
         [LIBCLANG_MODULE_PATH / "clangutils.cc"],
         "myclang/cext/clangutils",
-        includes=[CLANG_ROOT / "include"],
+        includes=[CLANG_ROOT / "include", LIBCLANG_INCLUDE],
         libpaths=["{extdir}/myclang/cext"],
         libraries=["myclang"],
         link_options=flags,
         std="c++14",
     )
-    ext_modules = [libclang_ext, clangutils_ext]
+    clcompiler_ext = AutoImportExtension(
+        "clcompiler",
+        [LIBCLANG_MODULE_PATH / "clcompiler.cc"],
+        "myclang/cext/clcompiler",
+        includes=[CLANG_ROOT / "include", LIBCLANG_INCLUDE],
+        libpaths=["{extdir}/myclang/cext"],
+        libraries=["myclang"],
+        link_options=flags,
+        std="c++14",
+    )
+    compiler_path = "myclang/clang_fake_root/bin/clang"
+    clang_compiler_ext = CCImportExtension(
+        "clang",
+        [LIBCLANG_MODULE_PATH / "clangmain.cc"],
+        compiler_path,
+        includes=[CLANG_ROOT / "include", LIBCLANG_INCLUDE],
+        libpaths=["{extdir}/myclang/cext"],
+        libraries=["myclang"],
+        link_options=clang_main_flags,
+        std="c++14",
+        shared=False, 
+        extcallback=CreateLinkCallback(),
+    )
+
+    ext_modules = [libclang_ext, clangutils_ext, clcompiler_ext, clang_compiler_ext]
 
 # Where the magic happens:
 setup(
