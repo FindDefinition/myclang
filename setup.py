@@ -142,7 +142,7 @@ class CreateLinkCallback(ExtCallback):
 
         assert target_path.name == clang_name
         clangpp_p = extdir / "myclang" / "clang_fake_root" / "bin" / clangpp_name
-        shutil.copy(str(target_path), clangpp_p)
+        shutil.copy(str(target_path), str(clangpp_p))
         # permission denied when create symlink in windows. 
         # so we just copy them.
 
