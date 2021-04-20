@@ -1005,7 +1005,7 @@ TemplateArgumentKind.TYPE = TemplateArgumentKind(1)
 TemplateArgumentKind.DECLARATION = TemplateArgumentKind(2)
 TemplateArgumentKind.NULLPTR = TemplateArgumentKind(3)
 TemplateArgumentKind.INTEGRAL = TemplateArgumentKind(4)
-
+TemplateArgumentKind.INVALID = TemplateArgumentKind(9)
 
 ### Exception Specification Kinds ###
 class ExceptionSpecificationKind(BaseEnumeration):
@@ -1103,6 +1103,8 @@ class Cursor(Structure):
             meta.append(colors.green(type_str))
         if self.nkind == NodeKind.EnumDecl:
             meta.append("isScoped={}".format(self.is_scoped_enum()))
+        if self.is_constexpr_variable():
+            meta.append("constexpr")
         start = self.extent.start
         end = self.extent.end 
         loc_str = f"{start.line}-{end.line}({start.column}-{end.column})"
@@ -1131,9 +1133,13 @@ class Cursor(Structure):
     def __repr__(self):
         return self.repr_reference()
 
-    def dumps(self, indent=2, max_depth=9999, type_str_size_limit=100, with_path=False):
-        printer = lambda x: x.repr_reference(
-            type_str_size_limit=type_str_size_limit, with_path=with_path)
+    def dumps(self, indent=2, max_depth=9999, type_str_size_limit=100, with_path=False, with_ref=False):
+        if with_ref:
+            printer = lambda x: x.repr_reference(
+                type_str_size_limit=type_str_size_limit, with_path=with_path)
+        else:
+            printer = lambda x: x.repr_basic(
+                type_str_size_limit=type_str_size_limit, with_path=with_path)
         getchild = lambda x: x.get_children()
         tree_formatter = lambda x: colors.blue(x)
         return treevis.tree_dumps(self, printer, getchild, indent, 0, max_depth, tree_formatter)
@@ -1160,11 +1166,14 @@ class Cursor(Structure):
         """
         return conf.lib.clang_isCursorDefinition(self)
 
-    def is_const_method(self):
+    def is_const_method(self) -> bool:
         """Returns True if the cursor refers to a C++ member function or member
         function template that is declared 'const'.
         """
         return conf.lib.clang_CXXMethod_isConst(self)
+
+    def is_constexpr_variable(self) -> bool:
+        return conf.lib.clang_Variable_isConstExpr(self)
 
     def is_converting_constructor(self):
         """Returns True if the cursor refers to a C++ converting constructor.
@@ -1536,9 +1545,14 @@ class Cursor(Structure):
         """Returns the number of template args associated with this cursor."""
         return conf.lib.clang_Cursor_getNumTemplateArguments(self)
 
-    def get_specialized_cursor_template(self):
-        """Returns the TemplateArgumentKind for the indicated template
-        argument."""
+    def get_specialized_cursor_template(self) -> "Cursor":
+        """
+        Given a cursor that may represent a specialization or instantiation of a template, retrieve the cursor that represents the template that it specializes or from which it was instantiated.
+
+        This routine determines the template involved both for explicit specializations of templates and for implicit instantiations of the template, both of which are referred to as "specializations". For a class template specialization (e.g., std::vector<bool>), this routine will return either the primary template (std::vector) or, if the specialization was instantiated from a class template partial specialization, the class template partial specialization. For a class template partial specialization and a function template specialization (including instantiations), this this routine will return the specialized template.
+
+        For members of a class template (e.g., member functions, member classes, or static data members), returns the specialized or instantiated member. Although not strictly "templates" in the C++ language, members of class templates have the same notions of specializations and instantiations that templates do, so this routine treats them similarly.
+        """
         return conf.lib.clang_getSpecializedCursorTemplate(self)
 
     def get_template_cursor_kind(self):
@@ -1997,7 +2011,7 @@ class Type(Structure):
     PointerTypes = [TypeKind.POINTER, TypeKind.BLOCKPOINTER]
 
     @property
-    def kind(self):
+    def kind(self) -> TypeKind:
         """Return the kind of this type."""
         return TypeKind.from_id(self._kind_id)
 
@@ -2089,6 +2103,9 @@ class Type(Structure):
 
     def get_template_argument_type(self, num) -> "Type":
         return conf.lib.clang_Type_getTemplateArgumentAsType(self, num)
+
+    def get_template_argument_value(self, num) -> str:
+        return conf.lib.clang_Type_getTemplateArgumentAsIntegral(self, num)
 
     def get_canonical(self) -> "Type":
         """
@@ -3255,6 +3272,7 @@ functionList = [
     ("clang_CXXConstructor_isMoveConstructor", [Cursor], bool),
     ("clang_CXXField_isMutable", [Cursor], bool),
     ("clang_CXXMethod_isConst", [Cursor], bool),
+    ("clang_Variable_isConstExpr", [Cursor], bool),
     ("clang_CXXMethod_isDefaulted", [Cursor], bool),
     ("clang_CXXMethod_isPureVirtual", [Cursor], bool),
     ("clang_CXXMethod_isStatic", [Cursor], bool),
@@ -3455,6 +3473,8 @@ functionList = [
     ("clang_Type_getNumTemplateArguments", [Type], c_int),
     ("clang_Type_getTemplateArgumentAsType", [Type,
                                               c_uint], Type, Type.from_result),
+    ("clang_Type_getTemplateArgumentAsIntegral", [Type, c_uint], _CXString,
+     _CXString.from_result),
     ("clang_Type_getOffsetOf", [Type, c_interop_string], c_longlong),
     ("clang_Type_getSizeOf", [Type], c_longlong),
     ("clang_Type_getCXXRefQualifier", [Type], c_uint),

@@ -9,3 +9,7 @@ int CODEAI_EXPORT compiler_main_bind(std::vector<std::string> args){
     }
     return compiler_main(args_ptrs);
 }
+
+std::tuple<int, std::unordered_map<std::string, std::string>>  CODEAI_EXPORT clangfmt_main_bind(std::vector<std::string> args, std::string inp){
+    return clangfmt_main(args, inp);
+}

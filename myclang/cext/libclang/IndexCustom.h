@@ -39,5 +39,7 @@ CINDEX_LINKAGE enum CXTemplateSpecializationKind
 clang_getTemplateSpecializationKind(CXCursor C);
 
 CINDEX_LINKAGE bool clang_cursorDevelop(CXCursor C);
+CINDEX_LINKAGE CXString clang_Type_getTemplateArgumentAsIntegral(CXType CT, unsigned index);
+CINDEX_LINKAGE unsigned clang_Variable_isConstExpr(CXCursor C);
 
 LLVM_CLANG_C_EXTERN_C_END

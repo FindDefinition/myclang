@@ -8560,6 +8560,17 @@ unsigned clang_CXXMethod_isConst(CXCursor C) {
   return (Method && Method->getMethodQualifiers().hasConst()) ? 1 : 0;
 }
 
+unsigned clang_Variable_isConstExpr(CXCursor C) {
+  if (!clang_isDeclaration(C.kind))
+    return 0;
+
+  const Decl *D = cxcursor::getCursorDecl(C);
+  const VarDecl *VD =
+      D ? dyn_cast_or_null<VarDecl>(D) : nullptr;
+  return (VD && VD->isConstexpr()) ? 1 : 0;
+}
+
+
 unsigned clang_CXXMethod_isDefaulted(CXCursor C) {
   if (!clang_isDeclaration(C.kind))
     return 0;

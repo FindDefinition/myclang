@@ -22,7 +22,8 @@
 #include "clang/AST/Type.h"
 #include "clang/Basic/AddressSpaces.h"
 #include "clang/Frontend/ASTUnit.h"
-
+#include "IndexCustom.h"
+#include <iostream>
 using namespace clang;
 
 static CXTypeKind GetBuiltinTypeKind(const BuiltinType *BT) {
@@ -196,6 +197,13 @@ static Optional<QualType> TemplateArgumentToQualType(const TemplateArgument &A) 
   return None;
 }
 
+static Optional<llvm::APSInt> TemplateArgumentToIntegral(const TemplateArgument &A) {
+  if (A.getKind() == TemplateArgument::Integral)
+    return A.getAsIntegral();
+  return None;
+}
+
+
 static Optional<QualType>
 FindTemplateArgumentTypeAt(ArrayRef<TemplateArgument> TA, unsigned index) {
   unsigned current = 0;
@@ -212,6 +220,24 @@ FindTemplateArgumentTypeAt(ArrayRef<TemplateArgument> TA, unsigned index) {
   }
   return None;
 }
+
+static Optional<llvm::APSInt>
+FindTemplateArgumentValueAt(ArrayRef<TemplateArgument> TA, unsigned index) {
+  unsigned current = 0;
+  for (const auto &A : TA) {
+    if (A.getKind() == TemplateArgument::Pack) {
+      if (index < current + A.pack_size())
+        return TemplateArgumentToIntegral(A.getPackAsArray()[index - current]);
+      current += A.pack_size();
+      continue;
+    }
+    if (current == index)
+      return TemplateArgumentToIntegral(A);
+    current++;
+  }
+  return None;
+}
+
 
 CXType clang_getCursorType(CXCursor C) {
   using namespace cxcursor;
@@ -1148,14 +1174,31 @@ CXType clang_Type_getTemplateArgumentAsType(CXType CT, unsigned index) {
   QualType T = GetQualType(CT);
   if (T.isNull())
     return MakeCXType(QualType(), GetTU(CT));
-
+  // std::cout << "ASFASFAS 1" << std::endl;
   auto TA = GetTemplateArguments(T);
   if (!TA)
     return MakeCXType(QualType(), GetTU(CT));
+  // std::cout << "ASFASFAS 2" << std::endl;
 
   Optional<QualType> QT = FindTemplateArgumentTypeAt(TA.getValue(), index);
   return MakeCXType(QT.getValueOr(QualType()), GetTU(CT));
 }
+
+CXString clang_Type_getTemplateArgumentAsIntegral(CXType CT, unsigned index) {
+  QualType T = GetQualType(CT);
+  if (T.isNull())
+    return cxstring::createRef("");
+  auto TA = GetTemplateArguments(T);
+  if (!TA)
+    return cxstring::createRef("");
+  auto value = FindTemplateArgumentValueAt(TA.getValue(), index);
+  if (value.hasValue()){
+    auto valueInt = value.getValue();
+    return cxstring::createRef(value.getValue().toString(10).c_str());
+  }
+  return cxstring::createRef("");
+}
+
 
 CXType clang_Type_getObjCObjectBaseType(CXType CT) {
   QualType T = GetQualType(CT);

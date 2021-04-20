@@ -27,6 +27,9 @@ def tree_dumps(node: _T,
                start_indent=0,
                max_depth=9999,
                tree_formatter=lambda x: x) -> str:
+    """used for 'list-children' tree. not suitable for 
+    key-value-list tree (e.g. python ast).
+    """ 
     ss = io.StringIO()
     q = [TreeDumpStatus(node, start_indent, 0, "",
                         [])]  # type: List[TreeDumpStatus]
